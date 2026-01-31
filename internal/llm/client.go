@@ -74,7 +74,7 @@ func NewClient(endpoint, model string) *Client {
 }
 
 // ParseChatMessage parses a chat message (with optional OCR text) and returns structured data
-func (c *Client) ParseChatMessage(message string, ocrText *string) (*ChatResponse, error) {
+func (c *Client) ParseChatMessage(message string, ocrText *string, lang string) (*ChatResponse, error) {
 	var prompt string
 	today := time.Now().Format("2006-01-02")
 
@@ -83,7 +83,7 @@ func (c *Client) ParseChatMessage(message string, ocrText *string) (*ChatRespons
 		prompt = fmt.Sprintf(OCRPromptTemplate, *ocrText)
 	} else {
 		// Use text prompt for regular messages
-		prompt = fmt.Sprintf(TextPromptTemplate, today, message)
+		prompt = fmt.Sprintf(TextPromptTemplate, lang, today, message)
 	}
 
 	response, err := c.generate(prompt)
@@ -115,7 +115,7 @@ func (c *Client) ParseChatMessage(message string, ocrText *string) (*ChatRespons
 // ParseSlipText parses OCR text from a slip and returns transaction data
 // This is a convenience method that wraps ParseChatMessage for backward compatibility
 func (c *Client) ParseSlipText(ocrText string) (*ParsedTransaction, error) {
-	resp, err := c.ParseChatMessage("", &ocrText)
+	resp, err := c.ParseChatMessage("", &ocrText, "th")
 	if err != nil {
 		return nil, err
 	}

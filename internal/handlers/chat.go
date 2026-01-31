@@ -16,6 +16,7 @@ import (
 type ChatRequest struct {
 	Message   string  `json:"message"`
 	ImagePath *string `json:"image_path"`
+	Lang      string  `json:"lang"`
 }
 
 // ChatResponse represents the chat response
@@ -51,11 +52,13 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	lang := normalizeLang(req.Lang)
+
 	// Parse with LLM
-	llmResp, err := h.llmClient.ParseChatMessage(req.Message, ocrText)
+	llmResp, err := h.llmClient.ParseChatMessage(req.Message, ocrText, lang)
 	if err != nil {
 		log.Printf("LLM parsing failed: %v", err)
-		respondChat(w, "ขออภัย ไม่สามารถประมวลผลได้ กรุณาลองใหม่", nil, nil)
+		respondChat(w, chatText(lang, "error_processing"), nil, nil)
 		return
 	}
 	log.Printf("Chat parsed intent=%s confidence=%.2f", llmResp.Intent, llmResp.Confidence)
@@ -63,17 +66,17 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 	// Handle based on intent
 	switch llmResp.Intent {
 	case "add_transaction", "bill_payment":
-		h.handleAddTransaction(w, r, req.Message, llmResp, req.ImagePath, ocrText)
+		h.handleAddTransaction(w, r, req.Message, llmResp, req.ImagePath, ocrText, lang)
 	case "query_summary":
-		h.handleQuerySummary(w, r, llmResp)
+		h.handleQuerySummary(w, r, llmResp, lang)
 	default:
-		respondChat(w, "ไม่เข้าใจคำสั่ง กรุณาลองพิมพ์ใหม่ เช่น 'วันนี้กินข้าวไป 50 บาท' หรือ 'เดือนนี้ใช้ไปเท่าไหร่'", nil, llmResp)
+		respondChat(w, chatText(lang, "error_unknown"), nil, llmResp)
 	}
 }
 
-func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, message string, resp *llm.ChatResponse, imagePath *string, ocrText *string) {
+func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, message string, resp *llm.ChatResponse, imagePath *string, ocrText *string, lang string) {
 	if resp.Transaction == nil {
-		respondChat(w, "ไม่พบข้อมูลรายการ กรุณาระบุจำนวนเงิน", nil, resp)
+		respondChat(w, chatText(lang, "missing_amount"), nil, resp)
 		return
 	}
 
@@ -129,19 +132,19 @@ func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, m
 	)
 	if err != nil {
 		log.Printf("Failed to create transaction: %v", err)
-		respondChat(w, "ไม่สามารถบันทึกรายการได้", nil, resp)
+		respondChat(w, chatText(lang, "save_failed"), nil, resp)
 		return
 	}
 	log.Printf("Transaction created id=%d status=%s amount=%.2f", created.ID, status, tx.Amount)
 
 	// Build reply
-	reply := buildTransactionReply(tx, status)
+	reply := buildTransactionReply(tx, status, lang)
 	respondChat(w, reply, &created.ID, resp)
 }
 
-func (h *Handler) handleQuerySummary(w http.ResponseWriter, r *http.Request, resp *llm.ChatResponse) {
+func (h *Handler) handleQuerySummary(w http.ResponseWriter, r *http.Request, resp *llm.ChatResponse, lang string) {
 	if resp.Filters == nil {
-		respondChat(w, "ไม่เข้าใจคำถาม กรุณาลองใหม่", nil, resp)
+		respondChat(w, chatText(lang, "error_unknown"), nil, resp)
 		return
 	}
 
@@ -159,12 +162,12 @@ func (h *Handler) handleQuerySummary(w http.ResponseWriter, r *http.Request, res
 	summary, err := h.repo.QuerySummary(userID, filters.Direction, from, to, filters.Category, filters.Channel)
 	if err != nil {
 		log.Printf("Query failed: %v", err)
-		respondChat(w, "ไม่สามารถดึงข้อมูลได้", nil, resp)
+		respondChat(w, chatText(lang, "fetch_failed"), nil, resp)
 		return
 	}
 
 	// Build reply
-	reply := buildSummaryReplyText(summary.TotalExpense, summary.TotalIncome, filters, from, to)
+	reply := buildSummaryReplyText(summary.TotalExpense, summary.TotalIncome, filters, from, to, lang)
 	respondChat(w, reply, nil, resp)
 }
 
@@ -178,13 +181,21 @@ func respondChat(w http.ResponseWriter, text string, txID *int64, debug interfac
 	json.NewEncoder(w).Encode(resp)
 }
 
-func buildTransactionReply(tx *llm.ParsedTransaction, status string) string {
+func buildTransactionReply(tx *llm.ParsedTransaction, status string, lang string) string {
 	var reply string
 
 	if status == "confirmed" {
-		reply = fmt.Sprintf("บันทึกแล้ว: %.2f บาท", tx.Amount)
+		if lang == "en" {
+			reply = fmt.Sprintf("Saved: %.2f THB", tx.Amount)
+		} else {
+			reply = fmt.Sprintf("บันทึกแล้ว: %.2f บาท", tx.Amount)
+		}
 		if tx.Category != "" {
-			reply += fmt.Sprintf(" หมวด%s", categoryThai(tx.Category))
+			if lang == "en" {
+				reply += fmt.Sprintf(" (%s)", categoryLabel(tx.Category, lang))
+			} else {
+				reply += fmt.Sprintf(" หมวด%s", categoryLabel(tx.Category, lang))
+			}
 		}
 		if tx.Channel != "" {
 			reply += fmt.Sprintf(" (%s)", tx.Channel)
@@ -193,41 +204,77 @@ func buildTransactionReply(tx *llm.ParsedTransaction, status string) string {
 			reply += fmt.Sprintf(" - %s", tx.Description)
 		}
 	} else {
-		reply = fmt.Sprintf("บันทึก %.2f บาท - รอยืนยัน", tx.Amount)
+		if lang == "en" {
+			reply = fmt.Sprintf("Saved %.2f THB - pending", tx.Amount)
+		} else {
+			reply = fmt.Sprintf("บันทึก %.2f บาท - รอยืนยัน", tx.Amount)
+		}
 		var missing []string
 		if tx.Category == "" {
-			missing = append(missing, "หมวดหมู่")
+			if lang == "en" {
+				missing = append(missing, "category")
+			} else {
+				missing = append(missing, "หมวดหมู่")
+			}
 		}
 		if tx.Channel == "" {
-			missing = append(missing, "ช่องทาง")
+			if lang == "en" {
+				missing = append(missing, "channel")
+			} else {
+				missing = append(missing, "ช่องทาง")
+			}
 		}
 		if len(missing) > 0 {
-			reply += fmt.Sprintf(" (กรุณาระบุ: %s)", strings.Join(missing, ", "))
+			if lang == "en" {
+				reply += fmt.Sprintf(" (please provide: %s)", strings.Join(missing, ", "))
+			} else {
+				reply += fmt.Sprintf(" (กรุณาระบุ: %s)", strings.Join(missing, ", "))
+			}
 		}
 	}
 
 	return reply
 }
 
-func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.QueryFilters, from, to string) string {
+func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.QueryFilters, from, to string, lang string) string {
 	var reply string
 
 	if filters.Direction == "expense" || filters.Direction == "" {
-		reply = fmt.Sprintf("ใช้ไป %.2f บาท", totalExpense)
+		if lang == "en" {
+			reply = fmt.Sprintf("Spent %.2f THB", totalExpense)
+		} else {
+			reply = fmt.Sprintf("ใช้ไป %.2f บาท", totalExpense)
+		}
 	} else if filters.Direction == "income" {
-		reply = fmt.Sprintf("รายรับ %.2f บาท", totalIncome)
+		if lang == "en" {
+			reply = fmt.Sprintf("Income %.2f THB", totalIncome)
+		} else {
+			reply = fmt.Sprintf("รายรับ %.2f บาท", totalIncome)
+		}
 	} else {
-		reply = fmt.Sprintf("รายจ่าย %.2f บาท, รายรับ %.2f บาท", totalExpense, totalIncome)
+		if lang == "en" {
+			reply = fmt.Sprintf("Expense %.2f THB, Income %.2f THB", totalExpense, totalIncome)
+		} else {
+			reply = fmt.Sprintf("รายจ่าย %.2f บาท, รายรับ %.2f บาท", totalExpense, totalIncome)
+		}
 	}
 
 	if filters.Category != "" {
-		reply += fmt.Sprintf(" (หมวด%s)", categoryThai(filters.Category))
+		if lang == "en" {
+			reply += fmt.Sprintf(" (%s)", categoryLabel(filters.Category, lang))
+		} else {
+			reply += fmt.Sprintf(" (หมวด%s)", categoryLabel(filters.Category, lang))
+		}
 	}
 	if filters.Channel != "" {
 		reply += fmt.Sprintf(" (%s)", filters.Channel)
 	}
 	if from != "" && to != "" {
-		reply += fmt.Sprintf(" ช่วง %s ถึง %s", from, to)
+		if lang == "en" {
+			reply += fmt.Sprintf(" from %s to %s", from, to)
+		} else {
+			reply += fmt.Sprintf(" ช่วง %s ถึง %s", from, to)
+		}
 	}
 
 	return reply
@@ -291,7 +338,22 @@ func clampDay(year int, month time.Month, day int) int {
 	return day
 }
 
-func categoryThai(category string) string {
+func categoryLabel(category string, lang string) string {
+	if lang == "en" {
+		mapping := map[string]string{
+			"food":      "food",
+			"rent":      "rent",
+			"shopping":  "shopping",
+			"transport": "transport",
+			"bill":      "bills",
+			"debt":      "debt",
+			"other":     "other",
+		}
+		if en, ok := mapping[category]; ok {
+			return en
+		}
+		return category
+	}
 	mapping := map[string]string{
 		"food":      "อาหาร",
 		"rent":      "ค่าเช่า",
@@ -301,10 +363,48 @@ func categoryThai(category string) string {
 		"debt":      "หนี้สิน",
 		"other":     "อื่นๆ",
 	}
-	if thai, ok := mapping[category]; ok {
-		return thai
+	if th, ok := mapping[category]; ok {
+		return th
 	}
 	return category
+}
+
+func normalizeLang(lang string) string {
+	if strings.ToLower(strings.TrimSpace(lang)) == "en" {
+		return "en"
+	}
+	return "th"
+}
+
+func chatText(lang string, key string) string {
+	if lang == "en" {
+		switch key {
+		case "error_processing":
+			return "Sorry, I couldn't process that. Please try again."
+		case "error_unknown":
+			return "I didn't understand. Try something like 'lunch 50' or 'how much did I spend this month?'"
+		case "missing_amount":
+			return "Missing amount. Please specify the amount."
+		case "save_failed":
+			return "Unable to save the transaction."
+		case "fetch_failed":
+			return "Unable to fetch data."
+		}
+	}
+
+	switch key {
+	case "error_processing":
+		return "ขออภัย ไม่สามารถประมวลผลได้ กรุณาลองใหม่"
+	case "error_unknown":
+		return "ไม่เข้าใจคำสั่ง กรุณาลองพิมพ์ใหม่ เช่น 'วันนี้กินข้าวไป 50 บาท' หรือ 'เดือนนี้ใช้ไปเท่าไหร่'"
+	case "missing_amount":
+		return "ไม่พบข้อมูลรายการ กรุณาระบุจำนวนเงิน"
+	case "save_failed":
+		return "ไม่สามารถบันทึกรายการได้"
+	case "fetch_failed":
+		return "ไม่สามารถดึงข้อมูลได้"
+	}
+	return ""
 }
 
 // ChatPage renders the chat UI

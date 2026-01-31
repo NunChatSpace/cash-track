@@ -1,19 +1,19 @@
 {{define "content"}}
 <div class="upload-section">
-    <h1>Upload Bank Slip</h1>
+    <h1 data-i18n="upload.title">Upload Bank Slip</h1>
     <div class="upload-box" id="dropZone">
         <div class="upload-icon">📷</div>
-        <p>Drag and drop your slip image here</p>
-        <p class="upload-hint">or click to select a file</p>
+        <p data-i18n="upload.drag">Drag and drop your slip image here</p>
+        <p class="upload-hint" data-i18n="upload.hint">or click to select a file</p>
         <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
     <div id="preview" class="preview hidden">
         <img id="previewImage" src="" alt="Preview">
-        <button id="uploadBtn" class="btn btn-primary">Process Slip</button>
+        <button id="uploadBtn" class="btn btn-primary" data-i18n="upload.process">Process Slip</button>
     </div>
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <p>Processing your slip...</p>
+        <p data-i18n="upload.processing">Processing your slip...</p>
     </div>
 </div>
 {{end}}
@@ -57,7 +57,7 @@ fileInput.addEventListener('change', (e) => {
 
 function handleFile(file) {
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        alert(CashTrackI18n.t('upload.select_image_error'));
         return;
     }
     selectedFile = file;
@@ -88,11 +88,10 @@ uploadBtn.addEventListener('click', async () => {
         const data = await response.json();
         window.location.href = data.redirect;
     } catch (error) {
-        alert('Failed to upload: ' + error.message);
+        alert(CashTrackI18n.t('upload.upload_failed') + error.message);
         loading.classList.add('hidden');
         dropZone.classList.remove('hidden');
     }
 });
 </script>
 {{end}}
-

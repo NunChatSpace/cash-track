@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="confirm-section">
-    <h1>Confirm Transaction</h1>
+    <h1 data-i18n="confirm.title">Confirm Transaction</h1>
     <div class="confirm-container">
         <div class="slip-preview">
             {{if .Transaction.SlipImagePath}}
@@ -8,66 +8,66 @@
             {{else if .Transaction.ImagePath}}
             <img src="/uploads/{{.Transaction.ImagePath}}" alt="Slip Image">
             {{else}}
-            <div class="no-image">No image</div>
+            <div class="no-image" data-i18n="confirm.no_image">No image</div>
             {{end}}
         </div>
         <form id="confirmForm" class="confirm-form">
             <div class="form-group">
-                <label for="amount">Amount (THB)</label>
+                <label for="amount" data-i18n="confirm.amount">Amount (THB)</label>
                 <input type="number" id="amount" name="amount" step="0.01" value="{{.Transaction.Amount}}" required>
             </div>
             <div class="form-group">
-                <label for="txn_date">Date</label>
+                <label for="txn_date" data-i18n="confirm.date">Date</label>
                 <input type="date" id="txn_date" name="txn_date" value="{{.Transaction.TxnDate}}">
             </div>
             <div class="form-group">
-                <label for="direction">Type</label>
+                <label for="direction" data-i18n="confirm.type">Type</label>
                 <select id="direction" name="direction">
-                    <option value="expense" {{if eq .Transaction.Direction "expense"}}selected{{end}}>Expense (รายจ่าย)</option>
-                    <option value="income" {{if eq .Transaction.Direction "income"}}selected{{end}}>Income (รายรับ)</option>
-                    <option value="transfer" {{if eq .Transaction.Direction "transfer"}}selected{{end}}>Transfer (โอน)</option>
+                    <option value="expense" {{if eq .Transaction.Direction "expense"}}selected{{end}} data-i18n="confirm.type_expense">Expense (รายจ่าย)</option>
+                    <option value="income" {{if eq .Transaction.Direction "income"}}selected{{end}} data-i18n="confirm.type_income">Income (รายรับ)</option>
+                    <option value="transfer" {{if eq .Transaction.Direction "transfer"}}selected{{end}} data-i18n="confirm.type_transfer">Transfer (โอน)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="category">Category</label>
+                <label for="category" data-i18n="confirm.category">Category</label>
                 <select id="category" name="category">
-                    <option value="">Select category</option>
-                    <option value="food" {{if eq .Transaction.Category "food"}}selected{{end}}>Food (อาหาร)</option>
-                    <option value="transport" {{if eq .Transaction.Category "transport"}}selected{{end}}>Transport (เดินทาง)</option>
-                    <option value="shopping" {{if eq .Transaction.Category "shopping"}}selected{{end}}>Shopping (ช้อปปิ้ง)</option>
-                    <option value="bill" {{if eq .Transaction.Category "bill"}}selected{{end}}>Bills (ค่าบริการ)</option>
-                    <option value="rent" {{if eq .Transaction.Category "rent"}}selected{{end}}>Rent (ค่าเช่า)</option>
-                    <option value="debt" {{if eq .Transaction.Category "debt"}}selected{{end}}>Debt (หนี้สิน)</option>
-                    <option value="other" {{if eq .Transaction.Category "other"}}selected{{end}}>Other (อื่นๆ)</option>
+                    <option value="" data-i18n="confirm.category_select">Select category</option>
+                    <option value="food" {{if eq .Transaction.Category "food"}}selected{{end}} data-i18n="categories.food">Food (อาหาร)</option>
+                    <option value="transport" {{if eq .Transaction.Category "transport"}}selected{{end}} data-i18n="categories.transport">Transport (เดินทาง)</option>
+                    <option value="shopping" {{if eq .Transaction.Category "shopping"}}selected{{end}} data-i18n="categories.shopping">Shopping (ช้อปปิ้ง)</option>
+                    <option value="bill" {{if eq .Transaction.Category "bill"}}selected{{end}} data-i18n="categories.bill">Bills (ค่าบริการ)</option>
+                    <option value="rent" {{if eq .Transaction.Category "rent"}}selected{{end}} data-i18n="categories.rent">Rent (ค่าเช่า)</option>
+                    <option value="debt" {{if eq .Transaction.Category "debt"}}selected{{end}} data-i18n="categories.debt">Debt (หนี้สิน)</option>
+                    <option value="other" {{if eq .Transaction.Category "other"}}selected{{end}} data-i18n="categories.other">Other (อื่นๆ)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="channel">Channel</label>
+                <label for="channel" data-i18n="confirm.channel">Channel</label>
                 <select id="channel" name="channel">
-                    <option value="">Select channel</option>
-                    <option value="cash" {{if eq .Transaction.Channel "cash"}}selected{{end}}>Cash</option>
+                    <option value="" data-i18n="confirm.channel_select">Select channel</option>
+                    <option value="cash" {{if eq .Transaction.Channel "cash"}}selected{{end}} data-i18n="labels.channel_cash">Cash</option>
                     <option value="scb" {{if eq .Transaction.Channel "scb"}}selected{{end}}>SCB</option>
                     <option value="kbank" {{if eq .Transaction.Channel "kbank"}}selected{{end}}>KBank</option>
                     <option value="tmw" {{if eq .Transaction.Channel "tmw"}}selected{{end}}>TrueMoney</option>
                     <option value="bbl" {{if eq .Transaction.Channel "bbl"}}selected{{end}}>Bangkok Bank</option>
                     <option value="ktb" {{if eq .Transaction.Channel "ktb"}}selected{{end}}>Krungthai</option>
-                    <option value="other" {{if eq .Transaction.Channel "other"}}selected{{end}}>Other</option>
+                    <option value="other" {{if eq .Transaction.Channel "other"}}selected{{end}} data-i18n="labels.channel_other">Other</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="description">Description</label>
-                <input type="text" id="description" name="description" value="{{.Transaction.Description}}" placeholder="Short description">
+                <label for="description" data-i18n="confirm.description">Description</label>
+                <input type="text" id="description" name="description" value="{{.Transaction.Description}}" data-i18n-placeholder="confirm.description_placeholder" placeholder="Short description">
             </div>
             <div class="form-actions">
-                <a href="/history" class="btn btn-secondary">Cancel</a>
-                <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
-                <button type="submit" class="btn btn-primary">Confirm</button>
+                <a href="/history" class="btn btn-secondary" data-i18n="confirm.cancel">Cancel</a>
+                <button type="button" class="btn btn-danger" id="deleteBtn" data-i18n="confirm.delete">Delete</button>
+                <button type="submit" class="btn btn-primary" data-i18n="confirm.confirm">Confirm</button>
             </div>
         </form>
     </div>
     {{if .Transaction.RawOCRText}}
     <details class="ocr-details">
-        <summary>View Raw OCR Text</summary>
+        <summary data-i18n="confirm.ocr_view">View Raw OCR Text</summary>
         <pre>{{.Transaction.RawOCRText}}</pre>
     </details>
     {{end}}
@@ -109,12 +109,12 @@ form.addEventListener('submit', async (e) => {
         const result = await response.json();
         window.location.href = result.redirect;
     } catch (error) {
-        alert('Failed to confirm: ' + error.message);
+        alert(CashTrackI18n.t('confirm.confirm_failed') + ': ' + error.message);
     }
 });
 
 deleteBtn.addEventListener('click', async () => {
-    if (!confirm('Delete this transaction?')) return;
+    if (!confirm(CashTrackI18n.t('confirm.delete_confirm'))) return;
     try {
         const response = await fetch(`/api/transactions/${transactionId}`, {
             method: 'DELETE'
@@ -125,7 +125,7 @@ deleteBtn.addEventListener('click', async () => {
         const result = await response.json();
         window.location.href = result.redirect || '/history';
     } catch (error) {
-        alert('Failed to delete: ' + error.message);
+        alert(CashTrackI18n.t('confirm.delete_failed') + ': ' + error.message);
     }
 });
 

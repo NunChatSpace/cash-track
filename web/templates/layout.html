@@ -19,11 +19,17 @@
             </button>
         </div>
         <div class="nav-links" id="navLinks">
-            <a href="/dashboard">Dashboard</a>
-            <a href="/history">History</a>
-            <a href="/users">Users</a>
+            <a href="/dashboard" data-i18n="nav.dashboard">Dashboard</a>
+            <a href="/history" data-i18n="nav.history">History</a>
+            <a href="/users" data-i18n="nav.users">Users</a>
         </div>
         <div class="user-switch">
+            <div class="lang-switch">
+                <select id="langSelect" aria-label="Language">
+                    <option value="th">ไทย</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
             <div class="user-badge">U</div>
             <div class="user-controls">
                 <select id="userSelect"></select>
@@ -36,6 +42,323 @@
     </main>
     {{template "scripts" .}}
     <script>
+    (function initI18n() {
+        const I18N = {
+            th: {
+                nav: { dashboard: 'Dashboard', history: 'History', users: 'Users', toggle: 'เปิด/ปิดเมนู' },
+                user: {
+                    add_option: '+ เพิ่มผู้ใช้',
+                    add_prompt: 'ชื่อผู้ใช้ใหม่',
+                    add_failed: 'เพิ่มผู้ใช้ไม่สำเร็จ',
+                    cutoff_prompt: 'ตัดรอบทุกๆวันที่ (1-30)',
+                    cutoff_error: 'ตัดรอบต้องอยู่ระหว่าง 1 ถึง 30',
+                    cutoff_failed: 'อัปเดตตัดรอบไม่สำเร็จ',
+                    cutoff_label: 'ตัดรอบทุกๆวันที่ {day}'
+                },
+                dashboard: {
+                    title: 'Dashboard',
+                    range: { month: 'เดือนนี้', last_month: 'เดือนที่แล้ว', year: 'ปีนี้', to: 'ถึง', apply: 'ใช้' },
+                    summary: { expense: 'รายจ่าย', income: 'รายรับ', net: 'คงเหลือ' },
+                    charts: { by_category: 'รายจ่ายตามหมวด', by_channel: 'รายจ่ายตามช่องทาง' },
+                    amount_thb: 'จำนวนเงิน (บาท)'
+                },
+                chat: {
+                    greeting: 'สวัสดี! พิมพ์รายจ่ายได้เลย เช่น "กินข้าว 50 บาท" หรืออัปโหลดรูปสลิป',
+                    placeholder: "พิมพ์ข้อความ เช่น 'วันนี้กินข้าว 50 บาท'",
+                    send: 'ส่ง',
+                    thinking: 'กำลังคิด...',
+                    assistant: 'ผู้ช่วย',
+                    edit: 'ดู/แก้ไข',
+                    error_failed: 'เกิดข้อผิดพลาด กรุณาลองใหม่',
+                    error_connect: 'ไม่สามารถเชื่อมต่อได้',
+                    image_prefix: 'รูปภาพ'
+                },
+                history: {
+                    title: 'ประวัติรายการ',
+                    empty: 'ยังไม่มีรายการ',
+                    empty_cta: 'เริ่มแชต',
+                    confirm: 'ยืนยัน',
+                    edit: 'แก้ไข',
+                    delete: 'ลบ',
+                    delete_confirm: 'ลบรายการนี้หรือไม่?',
+                    delete_failed: 'ลบรายการไม่สำเร็จ',
+                    confirm_failed: 'ยืนยันรายการไม่สำเร็จ'
+                },
+                users: {
+                    title: 'ผู้ใช้',
+                    new_placeholder: 'ชื่อผู้ใช้ใหม่',
+                    add: 'เพิ่มผู้ใช้',
+                    remove: 'ลบ',
+                    remove_confirm: 'ลบผู้ใช้และรายการทั้งหมดหรือไม่?',
+                    remove_failed: 'ลบผู้ใช้ไม่สำเร็จ',
+                    cutoff_label: 'ตัดรอบ {day}'
+                },
+                confirm: {
+                    title: 'ยืนยันรายการ',
+                    no_image: 'ไม่มีรูป',
+                    amount: 'จำนวนเงิน (บาท)',
+                    date: 'วันที่',
+                    type: 'ประเภท',
+                    type_expense: 'รายจ่าย',
+                    type_income: 'รายรับ',
+                    type_transfer: 'โอน',
+                    category: 'หมวดหมู่',
+                    category_select: 'เลือกหมวดหมู่',
+                    channel: 'ช่องทาง',
+                    channel_select: 'เลือกช่องทาง',
+                    description: 'รายละเอียด',
+                    description_placeholder: 'คำอธิบายสั้นๆ',
+                    cancel: 'ยกเลิก',
+                    delete: 'ลบ',
+                    confirm: 'ยืนยัน',
+                    ocr_view: 'ดูข้อความ OCR ดิบ',
+                    delete_confirm: 'ลบรายการนี้หรือไม่?',
+                    confirm_failed: 'ยืนยันรายการไม่สำเร็จ',
+                    delete_failed: 'ลบรายการไม่สำเร็จ'
+                },
+                upload: {
+                    title: 'อัปโหลดสลิปธนาคาร',
+                    drag: 'ลากและวางรูปสลิปของคุณที่นี่',
+                    hint: 'หรือคลิกเพื่อเลือกไฟล์',
+                    process: 'ประมวลผลสลิป',
+                    processing: 'กำลังประมวลผลสลิป...',
+                    select_image_error: 'กรุณาเลือกไฟล์รูปภาพ',
+                    upload_failed: 'อัปโหลดไม่สำเร็จ: '
+                },
+                labels: {
+                    status_pending: 'รอยืนยัน',
+                    status_confirmed: 'ยืนยันแล้ว',
+                    channel_cash: 'เงินสด',
+                    channel_scb: 'SCB',
+                    channel_kbank: 'KBank',
+                    channel_tmw: 'TrueMoney',
+                    channel_bbl: 'Bangkok Bank',
+                    channel_ktb: 'Krungthai',
+                    channel_other: 'อื่นๆ',
+                    channel_unknown: 'ไม่ทราบ',
+                    thb: 'บาท'
+                },
+                categories: {
+                    food: 'อาหาร',
+                    shopping: 'ช้อปปิ้ง',
+                    transport: 'เดินทาง',
+                    bill: 'ค่าบริการ',
+                    rent: 'ค่าเช่า',
+                    debt: 'หนี้สิน',
+                    other: 'อื่นๆ',
+                    uncategorized: 'ไม่ระบุ'
+                }
+            },
+            en: {
+                nav: { dashboard: 'Dashboard', history: 'History', users: 'Users', toggle: 'Toggle menu' },
+                user: {
+                    add_option: '+ Add user',
+                    add_prompt: 'New user name',
+                    add_failed: 'Failed to create user',
+                    cutoff_prompt: 'Cutoff day (1-30)',
+                    cutoff_error: 'Cutoff day must be between 1 and 30',
+                    cutoff_failed: 'Failed to update cutoff',
+                    cutoff_label: 'Cutoff day {day}'
+                },
+                dashboard: {
+                    title: 'Dashboard',
+                    range: { month: 'This month', last_month: 'Last month', year: 'This year', to: 'to', apply: 'Apply' },
+                    summary: { expense: 'Expense', income: 'Income', net: 'Net' },
+                    charts: { by_category: 'Expense by category', by_channel: 'Expense by channel' },
+                    amount_thb: 'Amount (THB)'
+                },
+                chat: {
+                    greeting: 'Hi! Type an expense like "lunch 50" or upload a slip image.',
+                    placeholder: "Type a message like 'lunch 50'",
+                    send: 'Send',
+                    thinking: 'Thinking...',
+                    assistant: 'Assistant',
+                    edit: 'View/Edit',
+                    error_failed: 'Something went wrong. Please try again.',
+                    error_connect: 'Unable to connect.',
+                    image_prefix: 'Image'
+                },
+                history: {
+                    title: 'Transaction History',
+                    empty: 'No transactions yet',
+                    empty_cta: 'Start chatting',
+                    confirm: 'Confirm',
+                    edit: 'Edit',
+                    delete: 'Delete',
+                    delete_confirm: 'Delete this transaction?',
+                    delete_failed: 'Failed to delete transaction',
+                    confirm_failed: 'Failed to confirm transaction'
+                },
+                users: {
+                    title: 'Users',
+                    new_placeholder: 'New user name',
+                    add: 'Add user',
+                    remove: 'Remove',
+                    remove_confirm: 'Remove this user and all their transactions?',
+                    remove_failed: 'Failed to remove user',
+                    cutoff_label: 'Cutoff {day}'
+                },
+                confirm: {
+                    title: 'Confirm Transaction',
+                    no_image: 'No image',
+                    amount: 'Amount (THB)',
+                    date: 'Date',
+                    type: 'Type',
+                    type_expense: 'Expense',
+                    type_income: 'Income',
+                    type_transfer: 'Transfer',
+                    category: 'Category',
+                    category_select: 'Select category',
+                    channel: 'Channel',
+                    channel_select: 'Select channel',
+                    description: 'Description',
+                    description_placeholder: 'Short description',
+                    cancel: 'Cancel',
+                    delete: 'Delete',
+                    confirm: 'Confirm',
+                    ocr_view: 'View Raw OCR Text',
+                    delete_confirm: 'Delete this transaction?',
+                    confirm_failed: 'Failed to confirm transaction',
+                    delete_failed: 'Failed to delete transaction'
+                },
+                upload: {
+                    title: 'Upload Bank Slip',
+                    drag: 'Drag and drop your slip image here',
+                    hint: 'or click to select a file',
+                    process: 'Process Slip',
+                    processing: 'Processing your slip...',
+                    select_image_error: 'Please select an image file',
+                    upload_failed: 'Failed to upload: '
+                },
+                labels: {
+                    status_pending: 'Pending',
+                    status_confirmed: 'Confirmed',
+                    channel_cash: 'Cash',
+                    channel_scb: 'SCB',
+                    channel_kbank: 'KBank',
+                    channel_tmw: 'TrueMoney',
+                    channel_bbl: 'Bangkok Bank',
+                    channel_ktb: 'Krungthai',
+                    channel_other: 'Other',
+                    channel_unknown: 'Unknown',
+                    thb: 'THB'
+                },
+                categories: {
+                    food: 'Food',
+                    shopping: 'Shopping',
+                    transport: 'Transport',
+                    bill: 'Bills',
+                    rent: 'Rent',
+                    debt: 'Debt',
+                    other: 'Other',
+                    uncategorized: 'Uncategorized'
+                }
+            }
+        };
+
+        const LOCALES = { th: 'th-TH', en: 'en-US' };
+        const FALLBACK_LANG = 'th';
+
+        function normalizeLang(lang) {
+            return lang === 'en' ? 'en' : 'th';
+        }
+
+        function getLang() {
+            const stored = localStorage.getItem('cash-track-lang');
+            return normalizeLang(stored || FALLBACK_LANG);
+        }
+
+        function setLang(lang) {
+            const safe = normalizeLang(lang);
+            localStorage.setItem('cash-track-lang', safe);
+            document.documentElement.lang = safe;
+            const select = document.getElementById('langSelect');
+            if (select) select.value = safe;
+            applyTranslations();
+            document.dispatchEvent(new CustomEvent('cash-track:lang', { detail: { lang: safe } }));
+        }
+
+        function t(key, vars) {
+            const lang = getLang();
+            const dict = I18N[lang] || I18N[FALLBACK_LANG];
+            const parts = key.split('.');
+            let cur = dict;
+            for (const part of parts) {
+                if (!cur || typeof cur !== 'object') return key;
+                cur = cur[part];
+            }
+            if (typeof cur !== 'string') return key;
+            if (!vars) return cur;
+            return cur.replace(/\{(\w+)\}/g, (_, name) => (vars[name] !== undefined ? vars[name] : `{${name}}`));
+        }
+
+        function applyTranslations() {
+            const lang = getLang();
+            const root = document;
+            root.querySelectorAll('[data-i18n]').forEach((el) => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = t(key);
+            });
+            root.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.setAttribute('placeholder', t(key));
+            });
+            root.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+                const key = el.getAttribute('data-i18n-aria');
+                el.setAttribute('aria-label', t(key));
+            });
+
+            const toggle = document.getElementById('navToggle');
+            if (toggle) toggle.setAttribute('aria-label', t('nav.toggle'));
+
+            root.querySelectorAll('.status-badge[data-status]').forEach((el) => {
+                const status = el.dataset.status;
+                if (status === 'pending') el.textContent = t('labels.status_pending');
+                if (status === 'confirmed') el.textContent = t('labels.status_confirmed');
+            });
+
+            root.querySelectorAll('.category-badge[data-category]').forEach((el) => {
+                const key = el.dataset.category;
+                if (key) el.textContent = t(`categories.${key}`);
+            });
+
+            root.querySelectorAll('.channel-badge[data-channel]').forEach((el) => {
+                const key = el.dataset.channel;
+                if (key === 'cash') el.textContent = t('labels.channel_cash');
+                if (key === 'scb') el.textContent = t('labels.channel_scb');
+                if (key === 'kbank') el.textContent = t('labels.channel_kbank');
+                if (key === 'tmw') el.textContent = t('labels.channel_tmw');
+                if (key === 'bbl') el.textContent = t('labels.channel_bbl');
+                if (key === 'ktb') el.textContent = t('labels.channel_ktb');
+                if (key === 'other') el.textContent = t('labels.channel_other');
+                if (key === 'unknown') el.textContent = t('labels.channel_unknown');
+            });
+
+            if (lang === 'en') {
+                document.querySelectorAll('.btn-filter').forEach((btn) => {
+                    if (btn.dataset.range === 'month') btn.textContent = t('dashboard.range.month');
+                    if (btn.dataset.range === 'last-month') btn.textContent = t('dashboard.range.last_month');
+                    if (btn.dataset.range === 'year') btn.textContent = t('dashboard.range.year');
+                });
+            }
+        }
+
+        const langSelect = document.getElementById('langSelect');
+        if (langSelect) {
+            langSelect.addEventListener('change', () => setLang(langSelect.value));
+            langSelect.value = getLang();
+        }
+
+        window.CashTrackI18n = {
+            t,
+            getLang,
+            getLocale: () => LOCALES[getLang()] || LOCALES[FALLBACK_LANG],
+            categories: () => (I18N[getLang()] || I18N[FALLBACK_LANG]).categories,
+        };
+
+        applyTranslations();
+    })();
+
     (async function initUserSwitch() {
         const select = document.getElementById('userSelect');
         const badge = document.getElementById('userBadge');
@@ -55,7 +378,7 @@
                     option.selected = true;
                     updateBadge(user.name);
                     if (cutoffBtn) {
-                        cutoffBtn.textContent = `ตัดรอบทุกๆวันที่ ${user.cutoff_day}`;
+                        cutoffBtn.textContent = CashTrackI18n.t('user.cutoff_label', { day: user.cutoff_day });
                         cutoffBtn.dataset.cutoff = user.cutoff_day;
                         cutoffBtn.dataset.userId = user.id;
                     }
@@ -65,13 +388,13 @@
 
             const addOption = document.createElement('option');
             addOption.value = 'add';
-            addOption.textContent = '+ Add user';
+            addOption.textContent = CashTrackI18n.t('user.add_option');
             select.appendChild(addOption);
         }
 
         select.addEventListener('change', async () => {
             if (select.value === 'add') {
-                const name = prompt('New user name');
+                const name = prompt(CashTrackI18n.t('user.add_prompt'));
                 if (!name) {
                     await loadUsers();
                     return;
@@ -85,7 +408,7 @@
                     await loadUsers();
                     window.location.reload();
                 } else {
-                    alert('Failed to create user');
+                    alert(CashTrackI18n.t('user.add_failed'));
                     await loadUsers();
                 }
                 return;
@@ -114,11 +437,11 @@
                 const userId = parseInt(cutoffBtn.dataset.userId, 10);
                 if (!userId) return;
                 const current = cutoffBtn.dataset.cutoff || '1';
-                const input = prompt('ตัดรอบทุกๆวันที่ (1-30)', current);
+                const input = prompt(CashTrackI18n.t('user.cutoff_prompt'), current);
                 if (!input) return;
                 const day = parseInt(input, 10);
                 if (!day || day < 1 || day > 30) {
-                    alert('ตัดรอบต้องอยู่ระหว่าง 1 ถึง 30');
+                    alert(CashTrackI18n.t('user.cutoff_error'));
                     return;
                 }
                 const resp = await fetch(`/api/users/${userId}`, {
@@ -130,13 +453,16 @@
                     await loadUsers();
                     window.location.reload();
                 } else {
-                    alert('Failed to update cutoff');
+                    alert(CashTrackI18n.t('user.cutoff_failed'));
                 }
             });
         }
 
 
         await loadUsers();
+        document.addEventListener('cash-track:lang', () => {
+            loadUsers();
+        });
     })();
 
     (function initNavToggle() {

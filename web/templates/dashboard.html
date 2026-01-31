@@ -1,46 +1,46 @@
 {{define "content"}}
 <div class="dashboard-container" data-cutoff-day="{{if .CurrentUser}}{{.CurrentUser.CutoffDay}}{{else}}29{{end}}">
-    <h1>Dashboard</h1>
+    <h1 data-i18n="dashboard.title">Dashboard</h1>
 
     <div class="date-range-picker">
-        <button class="btn btn-filter active" data-range="month">เดือนนี้</button>
-        <button class="btn btn-filter" data-range="last-month">เดือนที่แล้ว</button>
-        <button class="btn btn-filter" data-range="year">ปีนี้</button>
+        <button class="btn btn-filter active" data-range="month" data-i18n="dashboard.range.month">เดือนนี้</button>
+        <button class="btn btn-filter" data-range="last-month" data-i18n="dashboard.range.last_month">เดือนที่แล้ว</button>
+        <button class="btn btn-filter" data-range="year" data-i18n="dashboard.range.year">ปีนี้</button>
         <div class="custom-range">
             <button type="button" class="user-cutoff" id="cutoffBtn">ตัดรอบทุกๆวันที่ {{if .CurrentUser}}{{.CurrentUser.CutoffDay}}{{else}}1{{end}}</button>
             <input type="date" id="fromDate">
-            <span>ถึง</span>
+            <span data-i18n="dashboard.range.to">ถึง</span>
             <input type="date" id="toDate">
-            <button class="btn btn-small" id="applyRange">ใช้</button>
+            <button class="btn btn-small" id="applyRange" data-i18n="dashboard.range.apply">ใช้</button>
         </div>
     </div>
 
     <div class="summary-cards">
         <div class="summary-card expense">
-            <div class="card-label">รายจ่าย</div>
+            <div class="card-label" data-i18n="dashboard.summary.expense">รายจ่าย</div>
             <div class="card-value" id="totalExpense">0.00</div>
-            <div class="card-unit">บาท</div>
+            <div class="card-unit" data-i18n="labels.thb">บาท</div>
         </div>
         <div class="summary-card income">
-            <div class="card-label">รายรับ</div>
+            <div class="card-label" data-i18n="dashboard.summary.income">รายรับ</div>
             <div class="card-value" id="totalIncome">0.00</div>
-            <div class="card-unit">บาท</div>
+            <div class="card-unit" data-i18n="labels.thb">บาท</div>
         </div>
         <div class="summary-card net">
-            <div class="card-label">คงเหลือ</div>
+            <div class="card-label" data-i18n="dashboard.summary.net">คงเหลือ</div>
             <div class="card-value" id="netAmount">0.00</div>
-            <div class="card-unit">บาท</div>
+            <div class="card-unit" data-i18n="labels.thb">บาท</div>
         </div>
     </div>
 
     <div class="charts-row">
         <div class="chart-container">
-            <h3>รายจ่ายตามหมวด</h3>
+            <h3 data-i18n="dashboard.charts.by_category">รายจ่ายตามหมวด</h3>
             <canvas id="categoryChart"></canvas>
             <div class="chart-legend" id="categoryLegend"></div>
         </div>
         <div class="chart-container">
-            <h3>รายจ่ายตามช่องทาง</h3>
+            <h3 data-i18n="dashboard.charts.by_channel">รายจ่ายตามช่องทาง</h3>
             <canvas id="channelChart"></canvas>
         </div>
     </div>
@@ -64,16 +64,14 @@ const categoryColors = {
     'uncategorized': '#999999'
 };
 
-const categoryNames = {
-    'food': 'อาหาร',
-    'shopping': 'ช้อปปิ้ง',
-    'transport': 'เดินทาง',
-    'bill': 'ค่าบริการ',
-    'rent': 'ค่าเช่า',
-    'debt': 'หนี้สิน',
-    'other': 'อื่นๆ',
-    'uncategorized': 'ไม่ระบุ'
-};
+function getLocale() {
+    return (window.CashTrackI18n && CashTrackI18n.getLocale()) || 'th-TH';
+}
+
+function getCategoryLabel(key) {
+    const map = (window.CashTrackI18n && CashTrackI18n.categories && CashTrackI18n.categories()) || {};
+    return map[key] || key;
+}
 
 const container = document.querySelector('.dashboard-container');
 const CUTOFF_DAY = parseInt((container && container.dataset.cutoffDay) || '29', 10); // Spending period starts on cutoff day
@@ -149,12 +147,12 @@ async function fetchDashboard(from, to) {
 }
 
 function updateSummaryCards(data) {
-    document.getElementById('totalExpense').textContent = data.total_expense.toLocaleString('th-TH', {minimumFractionDigits: 2});
-    document.getElementById('totalIncome').textContent = data.total_income.toLocaleString('th-TH', {minimumFractionDigits: 2});
+    document.getElementById('totalExpense').textContent = data.total_expense.toLocaleString(getLocale(), {minimumFractionDigits: 2});
+    document.getElementById('totalIncome').textContent = data.total_income.toLocaleString(getLocale(), {minimumFractionDigits: 2});
 
     const net = data.total_income - data.total_expense;
     const netEl = document.getElementById('netAmount');
-    netEl.textContent = net.toLocaleString('th-TH', {minimumFractionDigits: 2});
+    netEl.textContent = net.toLocaleString(getLocale(), {minimumFractionDigits: 2});
     netEl.parentElement.classList.toggle('negative', net < 0);
 }
 
@@ -165,7 +163,7 @@ function renderCategoryChart(data) {
         categoryChart.destroy();
     }
 
-    const labels = data.by_category.map(c => categoryNames[c.category] || c.category);
+    const labels = data.by_category.map(c => getCategoryLabel(c.category));
     const values = data.by_category.map(c => c.amount);
     const colors = data.by_category.map(c => categoryColors[c.category] || '#999');
 
@@ -189,9 +187,10 @@ function renderCategoryChart(data) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const value = context.raw.toLocaleString('th-TH');
+                            const value = context.raw.toLocaleString(getLocale());
                             const percent = data.by_category[context.dataIndex].percent_of_expense.toFixed(1);
-                            return `${context.label}: ${value} บาท (${percent}%)`;
+                            const unit = (window.CashTrackI18n && CashTrackI18n.t) ? CashTrackI18n.t('labels.thb') : 'บาท';
+                            return `${context.label}: ${value} ${unit} (${percent}%)`;
                         }
                     }
                 }
@@ -205,7 +204,7 @@ function renderCategoryChart(data) {
         <div class="legend-item">
             <span class="legend-color" style="background: ${colors[i]}"></span>
             <span class="legend-label">${labels[i]}</span>
-            <span class="legend-value">${c.amount.toLocaleString('th-TH')} (${c.percent_of_expense.toFixed(1)}%)</span>
+            <span class="legend-value">${c.amount.toLocaleString(getLocale())} (${c.percent_of_expense.toFixed(1)}%)</span>
         </div>
     `).join('');
 }
@@ -225,7 +224,7 @@ function renderChannelChart(data) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'จำนวนเงิน (บาท)',
+                label: (window.CashTrackI18n && CashTrackI18n.t) ? CashTrackI18n.t('dashboard.amount_thb') : 'จำนวนเงิน (บาท)',
                 data: values,
                 backgroundColor: '#36A2EB',
                 borderRadius: 4
@@ -243,7 +242,7 @@ function renderChannelChart(data) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return value.toLocaleString('th-TH');
+                            return value.toLocaleString(getLocale());
                         }
                     }
                 }
@@ -288,5 +287,13 @@ const initialRange = getDateRange('month');
 document.getElementById('fromDate').value = initialRange.from;
 document.getElementById('toDate').value = initialRange.to;
 loadDashboard(initialRange.from, initialRange.to);
+
+document.addEventListener('cash-track:lang', () => {
+    const from = document.getElementById('fromDate').value;
+    const to = document.getElementById('toDate').value;
+    if (from && to) {
+        loadDashboard(from, to);
+    }
+});
 </script>
 {{end}}

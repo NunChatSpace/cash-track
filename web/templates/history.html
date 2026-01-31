@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="history-section">
-    <h1>Transaction History</h1>
+    <h1 data-i18n="history.title">Transaction History</h1>
     {{if .Transactions}}
     <div class="transactions-list">
         {{range .Transactions}}
@@ -18,26 +18,26 @@
                     {{if .Description}}<span>{{.Description}}</span>{{end}}
                 </div>
                 <div class="transaction-meta">
-                    <span class="channel-badge">{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}</span>
-                    <span class="category-badge">{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}</span>
-                    <span class="status-badge status-{{.Status}}">{{.Status}}</span>
+                    <span class="channel-badge" data-channel="{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}">{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}</span>
+                    <span class="category-badge" data-category="{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}">{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}</span>
+                    <span class="status-badge status-{{.Status}}" data-status="{{.Status}}">{{.Status}}</span>
                     {{if .TxnDate}}<span class="date">{{.TxnDate}}</span>{{else}}<span class="date">{{.CreatedAt}}</span>{{end}}
                 </div>
             </div>
             <div class="transaction-actions">
                 {{if eq .Status "pending"}}
-                <button type="button" class="btn btn-small btn-primary confirm-transaction" data-id="{{.ID}}">Confirm</button>
+                <button type="button" class="btn btn-small btn-primary confirm-transaction" data-id="{{.ID}}" data-i18n="history.confirm">Confirm</button>
                 {{end}}
-                <a href="/transactions/{{.ID}}/confirm" class="btn btn-small">Edit</a>
-                <button type="button" class="btn btn-small btn-danger delete-transaction" data-id="{{.ID}}">Delete</button>
+                <a href="/transactions/{{.ID}}/confirm" class="btn btn-small" data-i18n="history.edit">Edit</a>
+                <button type="button" class="btn btn-small btn-danger delete-transaction" data-id="{{.ID}}" data-i18n="history.delete">Delete</button>
             </div>
         </div>
         {{end}}
     </div>
     {{else}}
     <div class="empty-state">
-        <p>No transactions yet</p>
-        <a href="/chat" class="btn btn-primary">Start chatting</a>
+        <p data-i18n="history.empty">No transactions yet</p>
+        <a href="/chat" class="btn btn-primary" data-i18n="history.empty_cta">Start chatting</a>
     </div>
     {{end}}
 </div>
@@ -49,7 +49,7 @@ document.querySelectorAll('.delete-transaction').forEach((btn) => {
     btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         if (!id) return;
-        if (!confirm('Delete this transaction?')) return;
+        if (!confirm(CashTrackI18n.t('history.delete_confirm'))) return;
 
         try {
             const resp = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
@@ -59,7 +59,7 @@ document.querySelectorAll('.delete-transaction').forEach((btn) => {
             const card = btn.closest('.transaction-card');
             if (card) card.remove();
         } catch (err) {
-            alert('Failed to delete transaction');
+            alert(CashTrackI18n.t('history.delete_failed'));
         }
     });
 });
@@ -95,7 +95,7 @@ document.querySelectorAll('.confirm-transaction').forEach((btn) => {
             }
             btn.remove();
         } catch (err) {
-            alert('Failed to confirm transaction');
+            alert(CashTrackI18n.t('history.confirm_failed'));
         }
     });
 });

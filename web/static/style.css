@@ -62,6 +62,23 @@ body {
     border-radius: 2px;
 }
 
+.lang-switch select {
+    padding: 0.35rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.9);
+    color: #1f2937;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lang-switch select:focus {
+    outline: none;
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
 .user-switch {
     display: flex;
     align-items: center;

@@ -48,7 +48,7 @@ func parseTextRegex(message string) *ChatResponse {
 	}
 
 	return &ChatResponse{
-		Intent: "add_transaction",
+		Intent:      "add_transaction",
 		Transaction: &tx,
 		Confidence:  0.2,
 	}
@@ -73,7 +73,7 @@ func parseSlipRegex(ocrText string) *ChatResponse {
 	}
 
 	return &ChatResponse{
-		Intent: "bill_payment",
+		Intent:      "bill_payment",
 		Transaction: &tx,
 		Confidence:  0.2,
 	}
@@ -111,10 +111,10 @@ func parseDate(text string) string {
 	}
 
 	now := time.Now()
-	if strings.Contains(text, "เมื่อวาน") {
+	if strings.Contains(text, "เมื่อวาน") || strings.Contains(text, "yesterday") {
 		return now.AddDate(0, 0, -1).Format("2006-01-02")
 	}
-	if strings.Contains(text, "วันนี้") || strings.Contains(text, "เมื่อกี้") {
+	if strings.Contains(text, "วันนี้") || strings.Contains(text, "เมื่อกี้") || strings.Contains(text, "today") {
 		return now.Format("2006-01-02")
 	}
 
@@ -129,13 +129,13 @@ func formatDate(year, month, day int) string {
 }
 
 func parseDirection(text string, fallback string) string {
-	if strings.Contains(text, "รายรับ") || strings.Contains(text, "ได้เงิน") || strings.Contains(text, "รับเงิน") || strings.Contains(text, "เงินเข้า") {
+	if strings.Contains(text, "รายรับ") || strings.Contains(text, "ได้เงิน") || strings.Contains(text, "รับเงิน") || strings.Contains(text, "เงินเข้า") || strings.Contains(text, "income") || strings.Contains(text, "salary") {
 		return "income"
 	}
-	if strings.Contains(text, "โอน") && strings.Contains(text, "ไป") {
+	if (strings.Contains(text, "โอน") && strings.Contains(text, "ไป")) || strings.Contains(text, "transfer") {
 		return "transfer"
 	}
-	if strings.Contains(text, "รายจ่าย") || strings.Contains(text, "ใช้ไป") || strings.Contains(text, "จ่าย") {
+	if strings.Contains(text, "รายจ่าย") || strings.Contains(text, "ใช้ไป") || strings.Contains(text, "จ่าย") || strings.Contains(text, "expense") || strings.Contains(text, "spent") {
 		return "expense"
 	}
 	return fallback
@@ -147,13 +147,13 @@ func parseChannel(text string) string {
 		return "cash"
 	case strings.Contains(text, "scb") || strings.Contains(text, "ไทยพาณิชย์"):
 		return "scb"
-	case strings.Contains(text, "kbank") || strings.Contains(text, "กสิกร"):
+	case strings.Contains(text, "kbank") || strings.Contains(text, "กสิกร") || strings.Contains(text, "kasikorn"):
 		return "kbank"
-	case strings.Contains(text, "tmw") || strings.Contains(text, "truemoney") || strings.Contains(text, "ทรูมันนี่"):
+	case strings.Contains(text, "tmw") || strings.Contains(text, "truemoney") || strings.Contains(text, "true money") || strings.Contains(text, "ทรูมันนี่"):
 		return "tmw"
-	case strings.Contains(text, "bbl") || strings.Contains(text, "กรุงเทพ"):
+	case strings.Contains(text, "bbl") || strings.Contains(text, "bangkok bank") || strings.Contains(text, "กรุงเทพ"):
 		return "bbl"
-	case strings.Contains(text, "ktb") || strings.Contains(text, "กรุงไทย"):
+	case strings.Contains(text, "ktb") || strings.Contains(text, "krungthai") || strings.Contains(text, "กรุงไทย"):
 		return "ktb"
 	default:
 		return ""
@@ -162,17 +162,17 @@ func parseChannel(text string) string {
 
 func parseCategory(text string) string {
 	switch {
-	case strings.Contains(text, "อาหาร") || strings.Contains(text, "กิน") || strings.Contains(text, "ข้าว") || strings.Contains(text, "ร้าน"):
+	case strings.Contains(text, "อาหาร") || strings.Contains(text, "กิน") || strings.Contains(text, "ข้าว") || strings.Contains(text, "ร้าน") || strings.Contains(text, "food") || strings.Contains(text, "lunch") || strings.Contains(text, "dinner"):
 		return "food"
-	case strings.Contains(text, "เดินทาง") || strings.Contains(text, "รถ") || strings.Contains(text, "แท็กซี่") || strings.Contains(text, "bts") || strings.Contains(text, "mrt") || strings.Contains(text, "grab"):
+	case strings.Contains(text, "เดินทาง") || strings.Contains(text, "รถ") || strings.Contains(text, "แท็กซี่") || strings.Contains(text, "bts") || strings.Contains(text, "mrt") || strings.Contains(text, "grab") || strings.Contains(text, "transport") || strings.Contains(text, "uber") || strings.Contains(text, "taxi"):
 		return "transport"
-	case strings.Contains(text, "shopee") || strings.Contains(text, "lazada") || strings.Contains(text, "ซื้อ") || strings.Contains(text, "ช้อปปิ้ง"):
+	case strings.Contains(text, "shopee") || strings.Contains(text, "lazada") || strings.Contains(text, "ซื้อ") || strings.Contains(text, "ช้อปปิ้ง") || strings.Contains(text, "shopping"):
 		return "shopping"
-	case strings.Contains(text, "บิล") || strings.Contains(text, "ค่าไฟ") || strings.Contains(text, "ค่าน้ำ") || strings.Contains(text, "โทรศัพท์") || strings.Contains(text, "internet"):
+	case strings.Contains(text, "บิล") || strings.Contains(text, "ค่าไฟ") || strings.Contains(text, "ค่าน้ำ") || strings.Contains(text, "โทรศัพท์") || strings.Contains(text, "internet") || strings.Contains(text, "bill") || strings.Contains(text, "utility"):
 		return "bill"
-	case strings.Contains(text, "เช่า"):
+	case strings.Contains(text, "เช่า") || strings.Contains(text, "rent"):
 		return "rent"
-	case strings.Contains(text, "หนี้"):
+	case strings.Contains(text, "หนี้") || strings.Contains(text, "debt"):
 		return "debt"
 	default:
 		return ""
@@ -186,7 +186,14 @@ func isSummaryQuery(text string) bool {
 		strings.Contains(text, "เดือนที่แล้ว") ||
 		strings.Contains(text, "ปีนี้") ||
 		strings.Contains(text, "ปีที่แล้ว") ||
-		strings.Contains(text, "ทั้งหมด")
+		strings.Contains(text, "ทั้งหมด") ||
+		strings.Contains(text, "how much") ||
+		strings.Contains(text, "summary") ||
+		strings.Contains(text, "this month") ||
+		strings.Contains(text, "last month") ||
+		strings.Contains(text, "this year") ||
+		strings.Contains(text, "last year") ||
+		strings.Contains(text, "total")
 }
 
 func parseSummaryFilters(text string) QueryFilters {
@@ -198,18 +205,18 @@ func parseSummaryFilters(text string) QueryFilters {
 		},
 	}
 
-	if strings.Contains(text, "รายรับ") || strings.Contains(text, "ได้เงิน") || strings.Contains(text, "เงินเข้า") {
+	if strings.Contains(text, "รายรับ") || strings.Contains(text, "ได้เงิน") || strings.Contains(text, "เงินเข้า") || strings.Contains(text, "income") {
 		filters.Direction = "income"
-	} else if strings.Contains(text, "ทั้งสอง") || strings.Contains(text, "รวม") {
+	} else if strings.Contains(text, "ทั้งสอง") || strings.Contains(text, "รวม") || strings.Contains(text, "both") {
 		filters.Direction = "both"
 	}
 
 	switch {
-	case strings.Contains(text, "ทั้งหมด"):
+	case strings.Contains(text, "ทั้งหมด") || strings.Contains(text, "all time") || strings.Contains(text, "all"):
 		filters.Period = PeriodFilter{
 			Type: "all",
 		}
-	case strings.Contains(text, "เดือนที่แล้ว"):
+	case strings.Contains(text, "เดือนที่แล้ว") || strings.Contains(text, "last month"):
 		previous := now.AddDate(0, -1, 0)
 		first := time.Date(previous.Year(), previous.Month(), 1, 0, 0, 0, 0, previous.Location())
 		last := first.AddDate(0, 1, -1)
@@ -218,7 +225,7 @@ func parseSummaryFilters(text string) QueryFilters {
 			From: first.Format("2006-01-02"),
 			To:   last.Format("2006-01-02"),
 		}
-	case strings.Contains(text, "ปีนี้"):
+	case strings.Contains(text, "ปีนี้") || strings.Contains(text, "this year"):
 		first := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 		last := time.Date(now.Year(), 12, 31, 0, 0, 0, 0, now.Location())
 		filters.Period = PeriodFilter{
@@ -226,7 +233,7 @@ func parseSummaryFilters(text string) QueryFilters {
 			From: first.Format("2006-01-02"),
 			To:   last.Format("2006-01-02"),
 		}
-	case strings.Contains(text, "ปีที่แล้ว"):
+	case strings.Contains(text, "ปีที่แล้ว") || strings.Contains(text, "last year"):
 		prevYear := now.Year() - 1
 		first := time.Date(prevYear, 1, 1, 0, 0, 0, 0, now.Location())
 		last := time.Date(prevYear, 12, 31, 0, 0, 0, 0, now.Location())
@@ -235,14 +242,14 @@ func parseSummaryFilters(text string) QueryFilters {
 			From: first.Format("2006-01-02"),
 			To:   last.Format("2006-01-02"),
 		}
-	case strings.Contains(text, "วันนี้"):
+	case strings.Contains(text, "วันนี้") || strings.Contains(text, "today"):
 		today := now.Format("2006-01-02")
 		filters.Period = PeriodFilter{
 			Type: "day",
 			From: today,
 			To:   today,
 		}
-	case strings.Contains(text, "เมื่อวาน"):
+	case strings.Contains(text, "เมื่อวาน") || strings.Contains(text, "yesterday"):
 		yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
 		filters.Period = PeriodFilter{
 			Type: "day",

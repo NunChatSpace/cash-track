@@ -2,7 +2,7 @@
 <div class="chat-container">
     <div class="chat-messages" id="chatMessages">
         <div class="message message-bot">
-            <div class="message-content">
+            <div class="message-content" data-i18n="chat.greeting">
                 สวัสดี! พิมพ์รายจ่ายได้เลย เช่น "กินข้าว 50 บาท" หรืออัปโหลดรูปสลิป
             </div>
         </div>
@@ -18,8 +18,8 @@
                 <span>📷</span>
                 <input type="file" id="imageInput" accept="image/*" hidden>
             </label>
-            <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ เช่น 'วันนี้กินข้าว 50 บาท'" autocomplete="off">
-            <button type="button" class="btn btn-primary" id="sendBtn">ส่ง</button>
+            <input type="text" id="messageInput" data-i18n-placeholder="chat.placeholder" placeholder="พิมพ์ข้อความ เช่น 'วันนี้กินข้าว 50 บาท'" autocomplete="off">
+            <button type="button" class="btn btn-primary" id="sendBtn" data-i18n="chat.send">ส่ง</button>
         </div>
     </div>
 </div>
@@ -47,10 +47,12 @@ function addMessage(text, isUser = false, txId = null, isLoading = false) {
 
     let content = `<div class="message-content">${escapeHtml(text)}</div>`;
     if (txId) {
-        content += `<a href="/transactions/${txId}/confirm" class="btn btn-small">ดู/แก้ไข</a>`;
+        content += `<a href="/transactions/${txId}/confirm" class="btn btn-small">${CashTrackI18n.t('chat.edit')}</a>`;
     }
     if (!isUser) {
-        content += `<div class="message-meta">${isLoading ? '<span class="typing-indicator"><span></span><span></span><span></span></span>' : 'ผู้ช่วย'} • ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>`;
+        const locale = CashTrackI18n.getLocale();
+        const assistantLabel = CashTrackI18n.t('chat.assistant');
+        content += `<div class="message-meta">${isLoading ? '<span class="typing-indicator"><span></span><span></span><span></span></span>' : assistantLabel} • ${new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</div>`;
     }
 
     div.innerHTML = content;
@@ -77,16 +79,17 @@ async function sendMessage() {
         addMessage(message, true);
     }
     if (selectedFile) {
-        addMessage(`[รูปภาพ: ${selectedFile.name}]`, true);
+        addMessage(`[${CashTrackI18n.t('chat.image_prefix')}: ${selectedFile.name}]`, true);
     }
 
     messageInput.value = '';
-    const loadingMessage = addMessage('กำลังคิด...', false, null, true);
+    const loadingMessage = addMessage(CashTrackI18n.t('chat.thinking'), false, null, true);
 
     // Prepare request
     const body = {
         message: message,
-        image_path: null
+        image_path: null,
+        lang: CashTrackI18n.getLang()
     };
 
     // If there's an image, upload it first
@@ -124,27 +127,28 @@ async function sendMessage() {
             loadingMessage.classList.remove('message-loading');
             const meta = loadingMessage.querySelector('.message-meta');
             if (meta) {
-                meta.innerHTML = `ผู้ช่วย • ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
+                const locale = CashTrackI18n.getLocale();
+                meta.innerHTML = `${CashTrackI18n.t('chat.assistant')} • ${new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
             }
             if (data.transaction_id) {
                 const link = document.createElement('a');
                 link.href = `/transactions/${data.transaction_id}/confirm`;
                 link.className = 'btn btn-small';
-                link.textContent = 'ดู/แก้ไข';
+                link.textContent = CashTrackI18n.t('chat.edit');
                 loadingMessage.appendChild(link);
             }
         } else {
-            loadingMessage.querySelector('.message-content').textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+            loadingMessage.querySelector('.message-content').textContent = CashTrackI18n.t('chat.error_failed');
             loadingMessage.classList.remove('message-loading');
             const meta = loadingMessage.querySelector('.message-meta');
-            if (meta) meta.textContent = 'ผู้ช่วย';
+            if (meta) meta.textContent = CashTrackI18n.t('chat.assistant');
         }
     } catch (e) {
         console.error('Chat error:', e);
-        loadingMessage.querySelector('.message-content').textContent = 'ไม่สามารถเชื่อมต่อได้';
+        loadingMessage.querySelector('.message-content').textContent = CashTrackI18n.t('chat.error_connect');
         loadingMessage.classList.remove('message-loading');
         const meta = loadingMessage.querySelector('.message-meta');
-        if (meta) meta.textContent = 'ผู้ช่วย';
+        if (meta) meta.textContent = CashTrackI18n.t('chat.assistant');
     }
     isSending = false;
     sendBtn.disabled = false;

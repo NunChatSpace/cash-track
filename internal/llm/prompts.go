@@ -2,7 +2,8 @@ package llm
 
 // TextPromptTemplate is used for parsing text-only chat messages
 const TextPromptTemplate = `You are a strict JSON parser for a single-user personal finance tracker.
-User writes informal Thai messages about expenses and incomes.
+User writes informal Thai or English messages about expenses and incomes.
+UI language: %s. Prefer interpreting category/channel labels in that language when ambiguous.
 
 You MUST respond with ONLY raw JSON. No explanation. No markdown.
 
@@ -16,7 +17,7 @@ When intent = "add_transaction", use this JSON format:
 {
   "intent": "add_transaction",
   "transaction": {
-    "txn_date": "YYYY-MM-DD or null",
+    "txn_date": "YYYY-MM-DD or current date time",
     "amount": number or null,
     "currency": "THB",
     "direction": "income" | "expense" | "transfer",
