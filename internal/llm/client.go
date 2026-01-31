@@ -88,18 +88,18 @@ func (c *Client) ParseChatMessage(message string, ocrText *string) (*ChatRespons
 
 	response, err := c.generate(prompt)
 	if err != nil {
-		return nil, err
+		return parseWithRegex(message, ocrText), nil
 	}
 
 	// Extract JSON from response
 	jsonStr := extractJSON(response)
 	if jsonStr == "" {
-		return nil, fmt.Errorf("no JSON found in LLM response")
+		return parseWithRegex(message, ocrText), nil
 	}
 
 	var chatResp ChatResponse
 	if err := json.Unmarshal([]byte(jsonStr), &chatResp); err != nil {
-		return nil, fmt.Errorf("failed to parse LLM JSON: %w", err)
+		return parseWithRegex(message, ocrText), nil
 	}
 
 	return &chatResp, nil

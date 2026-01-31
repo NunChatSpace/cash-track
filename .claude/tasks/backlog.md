@@ -64,7 +64,7 @@ All 6 core tasks from the spec have been implemented:
 
 ### High Priority
 - [x] Delete transaction endpoint and UI
-- [ ] Fallback to regex parser when Ollama unavailable
+- [x] Fallback to regex parser when Ollama unavailable
 - [ ] Query summary via chat ("เดือนนี้ใช้ไปเท่าไหร่")
 
 ### Medium Priority
