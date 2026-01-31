@@ -1,4 +1,4 @@
-.PHONY: run build dev services-up services-down clean setup pull-model
+.PHONY: run build dev services-up services-down clean setup pull-model release release_major release_minor release_patch
 
 # Run the Go server
 run:
@@ -44,3 +44,13 @@ setup: deps services-up pull-model
 # Easy start (for non-technical users)
 easy:
 	./scripts/start.sh
+
+# Release version (no need to pass bump)
+release_major:
+	./scripts/release.sh major
+
+release_minor:
+	./scripts/release.sh minor
+
+release_patch:
+	./scripts/release.sh patch
