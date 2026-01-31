@@ -23,13 +23,15 @@
             <a href="/history" data-i18n="nav.history">History</a>
             <a href="/users" data-i18n="nav.users">Users</a>
         </div>
-        <div class="user-switch">
+        <div class="nav-tools">
             <div class="lang-switch">
                 <select id="langSelect" aria-label="Language">
-                    <option value="th">ไทย</option>
-                    <option value="en">English</option>
+                    <option value="th" data-flag="/static/icons/th.png">Thai</option>
+                    <option value="en" data-flag="/static/icons/us.png">English</option>
                 </select>
             </div>
+        </div>
+        <div class="user-switch">
             <div class="user-badge">U</div>
             <div class="user-controls">
                 <select id="userSelect"></select>
@@ -341,6 +343,10 @@
                     if (btn.dataset.range === 'year') btn.textContent = t('dashboard.range.year');
                 });
             }
+
+            if (window.CashTrackSelect && window.CashTrackSelect.refreshAll) {
+                window.CashTrackSelect.refreshAll();
+            }
         }
 
         const langSelect = document.getElementById('langSelect');
@@ -357,6 +363,179 @@
         };
 
         applyTranslations();
+    })();
+
+    (function initCustomSelects() {
+        function createOptionLabel(opt) {
+            const label = document.createElement('span');
+            label.className = 'custom-select-label';
+            if (opt.dataset && opt.dataset.flag) {
+                const flag = document.createElement('img');
+                flag.className = 'custom-select-flag';
+                flag.src = opt.dataset.flag;
+                flag.alt = '';
+                flag.loading = 'lazy';
+                label.appendChild(flag);
+            }
+            const text = document.createElement('span');
+            text.className = 'custom-select-text';
+            text.textContent = opt.textContent;
+            label.appendChild(text);
+            return label;
+        }
+
+        function enhanceSelect(select) {
+            if (!select || select.dataset.enhanced === 'true') return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'custom-select';
+            const trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'custom-select-trigger';
+            trigger.setAttribute('aria-haspopup', 'listbox');
+            trigger.setAttribute('aria-expanded', 'false');
+            const list = document.createElement('ul');
+            list.className = 'custom-select-options';
+            list.setAttribute('role', 'listbox');
+
+            select.parentNode.insertBefore(wrapper, select);
+            wrapper.appendChild(select);
+            wrapper.appendChild(trigger);
+            wrapper.appendChild(list);
+            select.dataset.enhanced = 'true';
+            select.classList.add('select-native');
+
+            function buildOptions() {
+                list.innerHTML = '';
+                Array.from(select.options).forEach((opt) => {
+                    const item = document.createElement('li');
+                    item.className = 'custom-select-option';
+                    item.appendChild(createOptionLabel(opt));
+                    item.dataset.value = opt.value;
+                    item.setAttribute('role', 'option');
+                    if (opt.disabled) {
+                        item.classList.add('disabled');
+                        item.setAttribute('aria-disabled', 'true');
+                    }
+                    if (opt.selected) {
+                        item.classList.add('selected');
+                        item.setAttribute('aria-selected', 'true');
+                    }
+                    item.addEventListener('click', () => {
+                        if (opt.disabled) return;
+                        select.value = opt.value;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeSelect(wrapper, trigger);
+                        updateTrigger();
+                        syncSelected();
+                    });
+                    list.appendChild(item);
+                });
+            }
+
+            function updateTrigger() {
+                const selected = select.options[select.selectedIndex];
+                trigger.innerHTML = '';
+                if (selected) {
+                    trigger.appendChild(createOptionLabel(selected));
+                }
+            }
+
+            function syncSelected() {
+                Array.from(list.children).forEach((item) => {
+                    item.classList.remove('selected');
+                    item.removeAttribute('aria-selected');
+                    if (item.dataset.value === select.value) {
+                        item.classList.add('selected');
+                        item.setAttribute('aria-selected', 'true');
+                    }
+                });
+            }
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = wrapper.classList.contains('open');
+                closeAllSelects();
+                if (!isOpen) {
+                    wrapper.classList.add('open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            select.addEventListener('change', () => {
+                updateTrigger();
+                syncSelected();
+            });
+
+            buildOptions();
+            updateTrigger();
+        }
+
+        function closeSelect(wrapper, trigger) {
+            if (!wrapper) return;
+            wrapper.classList.remove('open');
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        function closeAllSelects() {
+            document.querySelectorAll('.custom-select.open').forEach((el) => {
+                const trigger = el.querySelector('.custom-select-trigger');
+                closeSelect(el, trigger);
+            });
+        }
+
+        document.addEventListener('click', () => closeAllSelects());
+
+        function refresh(select) {
+            if (!select) return;
+            if (select.dataset.enhanced !== 'true') {
+                enhanceSelect(select);
+                return;
+            }
+            const wrapper = select.closest('.custom-select');
+            if (!wrapper) return;
+            const list = wrapper.querySelector('.custom-select-options');
+            const trigger = wrapper.querySelector('.custom-select-trigger');
+            if (!list || !trigger) return;
+            list.innerHTML = '';
+            Array.from(select.options).forEach((opt) => {
+                const item = document.createElement('li');
+                item.className = 'custom-select-option';
+                item.appendChild(createOptionLabel(opt));
+                item.dataset.value = opt.value;
+                item.setAttribute('role', 'option');
+                if (opt.disabled) {
+                    item.classList.add('disabled');
+                    item.setAttribute('aria-disabled', 'true');
+                }
+                if (opt.selected) {
+                    item.classList.add('selected');
+                    item.setAttribute('aria-selected', 'true');
+                }
+                item.addEventListener('click', () => {
+                    if (opt.disabled) return;
+                    select.value = opt.value;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    closeSelect(wrapper, trigger);
+                    trigger.innerHTML = '';
+                    trigger.appendChild(createOptionLabel(opt));
+                    list.querySelectorAll('.custom-select-option').forEach((li) => li.classList.remove('selected'));
+                    item.classList.add('selected');
+                });
+                list.appendChild(item);
+            });
+            const selected = select.options[select.selectedIndex];
+            trigger.innerHTML = '';
+            if (selected) {
+                trigger.appendChild(createOptionLabel(selected));
+            }
+        }
+
+        function refreshAll() {
+            document.querySelectorAll('select').forEach((select) => refresh(select));
+        }
+
+        window.CashTrackSelect = { enhance: enhanceSelect, refresh, refreshAll };
+        refreshAll();
     })();
 
     (async function initUserSwitch() {
@@ -390,6 +569,9 @@
             addOption.value = 'add';
             addOption.textContent = CashTrackI18n.t('user.add_option');
             select.appendChild(addOption);
+            if (window.CashTrackSelect) {
+                CashTrackSelect.refresh(select);
+            }
         }
 
         select.addEventListener('change', async () => {
@@ -460,6 +642,9 @@
 
 
         await loadUsers();
+        if (window.CashTrackSelect) {
+            CashTrackSelect.refresh(select);
+        }
         document.addEventListener('cash-track:lang', () => {
             loadUsers();
         });
