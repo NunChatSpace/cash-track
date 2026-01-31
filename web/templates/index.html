@@ -1,0 +1,98 @@
+{{define "content"}}
+<div class="upload-section">
+    <h1>Upload Bank Slip</h1>
+    <div class="upload-box" id="dropZone">
+        <div class="upload-icon">📷</div>
+        <p>Drag and drop your slip image here</p>
+        <p class="upload-hint">or click to select a file</p>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+    <div id="preview" class="preview hidden">
+        <img id="previewImage" src="" alt="Preview">
+        <button id="uploadBtn" class="btn btn-primary">Process Slip</button>
+    </div>
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Processing your slip...</p>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const previewImage = document.getElementById('previewImage');
+const uploadBtn = document.getElementById('uploadBtn');
+const loading = document.getElementById('loading');
+
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+    }
+});
+
+function handleFile(file) {
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    selectedFile = file;
+    previewImage.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+    dropZone.classList.add('hidden');
+}
+
+uploadBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    preview.classList.add('hidden');
+    loading.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('slip', selectedFile);
+
+    try {
+        const response = await fetch('/api/transactions/slip', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        window.location.href = data.redirect;
+    } catch (error) {
+        alert('Failed to upload: ' + error.message);
+        loading.classList.add('hidden');
+        dropZone.classList.remove('hidden');
+    }
+});
+</script>
+{{end}}
+

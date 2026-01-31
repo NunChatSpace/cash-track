@@ -1,0 +1,40 @@
+# Binaries
+bin/
+*.exe
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Docker
+.docker/
+
+# Logs
+*.log

@@ -1,0 +1,139 @@
+{{define "content"}}
+<div class="confirm-section">
+    <h1>Confirm Transaction</h1>
+    <div class="confirm-container">
+        <div class="slip-preview">
+            {{if .Transaction.SlipImagePath}}
+            <img src="/uploads/{{.Transaction.SlipImagePath}}" alt="Slip Image">
+            {{else if .Transaction.ImagePath}}
+            <img src="/uploads/{{.Transaction.ImagePath}}" alt="Slip Image">
+            {{else}}
+            <div class="no-image">No image</div>
+            {{end}}
+        </div>
+        <form id="confirmForm" class="confirm-form">
+            <div class="form-group">
+                <label for="amount">Amount (THB)</label>
+                <input type="number" id="amount" name="amount" step="0.01" value="{{.Transaction.Amount}}" required>
+            </div>
+            <div class="form-group">
+                <label for="txn_date">Date</label>
+                <input type="date" id="txn_date" name="txn_date" value="{{.Transaction.TxnDate}}">
+            </div>
+            <div class="form-group">
+                <label for="direction">Type</label>
+                <select id="direction" name="direction">
+                    <option value="expense" {{if eq .Transaction.Direction "expense"}}selected{{end}}>Expense (รายจ่าย)</option>
+                    <option value="income" {{if eq .Transaction.Direction "income"}}selected{{end}}>Income (รายรับ)</option>
+                    <option value="transfer" {{if eq .Transaction.Direction "transfer"}}selected{{end}}>Transfer (โอน)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">Select category</option>
+                    <option value="food" {{if eq .Transaction.Category "food"}}selected{{end}}>Food (อาหาร)</option>
+                    <option value="transport" {{if eq .Transaction.Category "transport"}}selected{{end}}>Transport (เดินทาง)</option>
+                    <option value="shopping" {{if eq .Transaction.Category "shopping"}}selected{{end}}>Shopping (ช้อปปิ้ง)</option>
+                    <option value="bill" {{if eq .Transaction.Category "bill"}}selected{{end}}>Bills (ค่าบริการ)</option>
+                    <option value="rent" {{if eq .Transaction.Category "rent"}}selected{{end}}>Rent (ค่าเช่า)</option>
+                    <option value="debt" {{if eq .Transaction.Category "debt"}}selected{{end}}>Debt (หนี้สิน)</option>
+                    <option value="other" {{if eq .Transaction.Category "other"}}selected{{end}}>Other (อื่นๆ)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="channel">Channel</label>
+                <select id="channel" name="channel">
+                    <option value="">Select channel</option>
+                    <option value="cash" {{if eq .Transaction.Channel "cash"}}selected{{end}}>Cash</option>
+                    <option value="scb" {{if eq .Transaction.Channel "scb"}}selected{{end}}>SCB</option>
+                    <option value="kbank" {{if eq .Transaction.Channel "kbank"}}selected{{end}}>KBank</option>
+                    <option value="tmw" {{if eq .Transaction.Channel "tmw"}}selected{{end}}>TrueMoney</option>
+                    <option value="bbl" {{if eq .Transaction.Channel "bbl"}}selected{{end}}>Bangkok Bank</option>
+                    <option value="ktb" {{if eq .Transaction.Channel "ktb"}}selected{{end}}>Krungthai</option>
+                    <option value="other" {{if eq .Transaction.Channel "other"}}selected{{end}}>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" value="{{.Transaction.Description}}" placeholder="Short description">
+            </div>
+            <div class="form-actions">
+                <a href="/history" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Confirm</button>
+            </div>
+        </form>
+    </div>
+    {{if .Transaction.RawOCRText}}
+    <details class="ocr-details">
+        <summary>View Raw OCR Text</summary>
+        <pre>{{.Transaction.RawOCRText}}</pre>
+    </details>
+    {{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+const form = document.getElementById('confirmForm');
+const transactionId = {{.Transaction.ID}};
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const data = {
+        amount: parseFloat(formData.get('amount')) || 0,
+        txn_date: formData.get('txn_date'),
+        direction: formData.get('direction'),
+        category: formData.get('category'),
+        channel: formData.get('channel'),
+        description: formData.get('description')
+    };
+
+    try {
+        const response = await fetch(`/api/transactions/${transactionId}/confirm`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to confirm');
+        }
+
+        const result = await response.json();
+        window.location.href = result.redirect;
+    } catch (error) {
+        alert('Failed to confirm: ' + error.message);
+    }
+});
+
+// Poll for OCR results if fields are empty
+const amount = document.getElementById('amount');
+if (!amount.value || amount.value === '0') {
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/transactions/${transactionId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.amount && data.amount > 0) {
+                    document.getElementById('amount').value = data.amount;
+                    if (data.txn_date) document.getElementById('txn_date').value = data.txn_date;
+                    if (data.category) document.getElementById('category').value = data.category;
+                    if (data.channel) document.getElementById('channel').value = data.channel;
+                    if (data.description) document.getElementById('description').value = data.description;
+                    clearInterval(pollInterval);
+                }
+            }
+        } catch (e) {
+            console.error('Poll error:', e);
+        }
+    }, 1000);
+
+    setTimeout(() => clearInterval(pollInterval), 30000);
+}
+</script>
+{{end}}

@@ -1,0 +1,172 @@
+{{define "content"}}
+<div class="chat-container">
+    <div class="chat-messages" id="chatMessages">
+        <div class="message message-bot">
+            <div class="message-content">
+                สวัสดี! พิมพ์รายจ่ายได้เลย เช่น "กินข้าว 50 บาท" หรืออัปโหลดรูปสลิป
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-area">
+        <div class="image-preview hidden" id="imagePreview">
+            <img id="previewImg" src="" alt="Preview">
+            <button type="button" class="btn-remove" id="removeImage">&times;</button>
+        </div>
+        <div class="input-row">
+            <label class="btn-upload" for="imageInput">
+                <span>📷</span>
+                <input type="file" id="imageInput" accept="image/*" hidden>
+            </label>
+            <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ เช่น 'วันนี้กินข้าว 50 บาท'" autocomplete="off">
+            <button type="button" class="btn btn-primary" id="sendBtn">ส่ง</button>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+const chatMessages = document.getElementById('chatMessages');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const imageInput = document.getElementById('imageInput');
+const imagePreview = document.getElementById('imagePreview');
+const previewImg = document.getElementById('previewImg');
+const removeImage = document.getElementById('removeImage');
+
+let selectedFile = null;
+
+function addMessage(text, isUser = false, txId = null) {
+    const div = document.createElement('div');
+    div.className = `message ${isUser ? 'message-user' : 'message-bot'}`;
+
+    let content = `<div class="message-content">${escapeHtml(text)}</div>`;
+    if (txId) {
+        content += `<a href="/transactions/${txId}/confirm" class="btn btn-small">ดู/แก้ไข</a>`;
+    }
+
+    div.innerHTML = content;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message && !selectedFile) return;
+
+    // Show user message
+    if (message) {
+        addMessage(message, true);
+    }
+    if (selectedFile) {
+        addMessage(`[รูปภาพ: ${selectedFile.name}]`, true);
+    }
+
+    messageInput.value = '';
+
+    // Prepare request
+    const body = {
+        message: message,
+        image_path: null
+    };
+
+    // If there's an image, upload it first
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append('slip', selectedFile);
+
+        try {
+            const uploadResp = await fetch('/api/transactions/slip', {
+                method: 'POST',
+                body: formData
+            });
+            if (uploadResp.ok) {
+                const data = await uploadResp.json();
+                body.image_path = data.image_path;
+            }
+        } catch (e) {
+            console.error('Upload failed:', e);
+        }
+
+        clearImage();
+    }
+
+    // Send chat request
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            addMessage(data.reply_text, false, data.transaction_id);
+        } else {
+            addMessage('เกิดข้อผิดพลาด กรุณาลองใหม่', false);
+        }
+    } catch (e) {
+        console.error('Chat error:', e);
+        addMessage('ไม่สามารถเชื่อมต่อได้', false);
+    }
+}
+
+function clearImage() {
+    selectedFile = null;
+    imagePreview.classList.add('hidden');
+    previewImg.src = '';
+    imageInput.value = '';
+}
+
+// Event listeners
+sendBtn.addEventListener('click', sendMessage);
+
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+imageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
+        previewImg.src = URL.createObjectURL(selectedFile);
+        imagePreview.classList.remove('hidden');
+    }
+});
+
+removeImage.addEventListener('click', clearImage);
+
+// Load recent transactions on page load
+async function loadHistory() {
+    try {
+        const response = await fetch('/api/transactions/recent');
+        if (response.ok) {
+            const transactions = await response.json();
+            if (transactions && transactions.length > 0) {
+                // Show in chronological order (oldest first)
+                transactions.reverse().forEach(tx => {
+                    const direction = tx.direction === 'income' ? '+' : '-';
+                    const category = tx.category ? ` [${tx.category}]` : '';
+                    const desc = tx.description || '';
+                    const date = tx.txn_date || tx.created_at.split(' ')[0];
+                    const msg = `${date}: ${direction}${tx.amount.toFixed(2)} ${tx.currency}${category} ${desc}`.trim();
+                    addMessage(msg, false, tx.status === 'pending' ? tx.id : null);
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load history:', e);
+    }
+}
+
+loadHistory();
+</script>
+{{end}}

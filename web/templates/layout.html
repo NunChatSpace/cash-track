@@ -1,0 +1,28 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Track - {{.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">Cash Track</a>
+        <div class="nav-links">
+            <a href="/chat">Chat</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/history">History</a>
+            <a href="/">Upload</a>
+        </div>
+    </nav>
+    <main class="container">
+        {{template "content" .}}
+    </main>
+    {{template "scripts" .}}
+</body>
+</html>
+{{end}}
+
+{{define "scripts"}}{{end}}

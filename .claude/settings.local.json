@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod init:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(timeout 3 ./bin/cash-track:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(curl:*)",
+      "Bash(ollama list:*)",
+      "Bash(docker compose:*)",
+      "Bash(make setup:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(kill:*)",
+      "Bash(sqlite3:*)"
+    ]
+  }
+}

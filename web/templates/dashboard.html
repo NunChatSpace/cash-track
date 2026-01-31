@@ -1,0 +1,285 @@
+{{define "content"}}
+<div class="dashboard-container">
+    <h1>Dashboard</h1>
+
+    <div class="date-range-picker">
+        <button class="btn btn-filter active" data-range="month">เดือนนี้</button>
+        <button class="btn btn-filter" data-range="last-month">เดือนที่แล้ว</button>
+        <button class="btn btn-filter" data-range="year">ปีนี้</button>
+        <div class="custom-range">
+            <input type="date" id="fromDate">
+            <span>ถึง</span>
+            <input type="date" id="toDate">
+            <button class="btn btn-small" id="applyRange">ใช้</button>
+        </div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="summary-card expense">
+            <div class="card-label">รายจ่าย</div>
+            <div class="card-value" id="totalExpense">0.00</div>
+            <div class="card-unit">บาท</div>
+        </div>
+        <div class="summary-card income">
+            <div class="card-label">รายรับ</div>
+            <div class="card-value" id="totalIncome">0.00</div>
+            <div class="card-unit">บาท</div>
+        </div>
+        <div class="summary-card net">
+            <div class="card-label">คงเหลือ</div>
+            <div class="card-value" id="netAmount">0.00</div>
+            <div class="card-unit">บาท</div>
+        </div>
+    </div>
+
+    <div class="charts-row">
+        <div class="chart-container">
+            <h3>รายจ่ายตามหมวด</h3>
+            <canvas id="categoryChart"></canvas>
+            <div class="chart-legend" id="categoryLegend"></div>
+        </div>
+        <div class="chart-container">
+            <h3>รายจ่ายตามช่องทาง</h3>
+            <canvas id="channelChart"></canvas>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+let categoryChart = null;
+let channelChart = null;
+
+const categoryColors = {
+    'food': '#FF6384',
+    'shopping': '#36A2EB',
+    'transport': '#FFCE56',
+    'bill': '#4BC0C0',
+    'rent': '#9966FF',
+    'debt': '#FF9F40',
+    'other': '#C9CBCF',
+    'uncategorized': '#999999'
+};
+
+const categoryNames = {
+    'food': 'อาหาร',
+    'shopping': 'ช้อปปิ้ง',
+    'transport': 'เดินทาง',
+    'bill': 'ค่าบริการ',
+    'rent': 'ค่าเช่า',
+    'debt': 'หนี้สิน',
+    'other': 'อื่นๆ',
+    'uncategorized': 'ไม่ระบุ'
+};
+
+const CUTOFF_DAY = 29; // Spending period starts on 29th of each month
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function getDateRange(range) {
+    const now = new Date();
+    let from, to;
+
+    switch (range) {
+        case 'month':
+            // Current period: 29th of last month to 28th of this month
+            if (now.getDate() >= CUTOFF_DAY) {
+                // We're in the new period (29th onwards)
+                from = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth() + 1, CUTOFF_DAY - 1);
+            } else {
+                // We're still in the previous period (before 29th)
+                from = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1);
+            }
+            break;
+        case 'last-month':
+            // Previous period
+            if (now.getDate() >= CUTOFF_DAY) {
+                from = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1);
+            } else {
+                from = new Date(now.getFullYear(), now.getMonth() - 2, CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY - 1);
+            }
+            break;
+        case 'year':
+            from = new Date(now.getFullYear(), 0, 1);
+            to = new Date(now.getFullYear(), 11, 31);
+            break;
+        default:
+            if (now.getDate() >= CUTOFF_DAY) {
+                from = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth() + 1, CUTOFF_DAY - 1);
+            } else {
+                from = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY);
+                to = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1);
+            }
+    }
+
+    return {
+        from: formatDate(from),
+        to: formatDate(to)
+    };
+}
+
+async function fetchDashboard(from, to) {
+    try {
+        const response = await fetch(`/api/dashboard/summary?from=${from}&to=${to}`);
+        if (!response.ok) throw new Error('Failed to fetch');
+        return await response.json();
+    } catch (e) {
+        console.error('Fetch error:', e);
+        return null;
+    }
+}
+
+function updateSummaryCards(data) {
+    document.getElementById('totalExpense').textContent = data.total_expense.toLocaleString('th-TH', {minimumFractionDigits: 2});
+    document.getElementById('totalIncome').textContent = data.total_income.toLocaleString('th-TH', {minimumFractionDigits: 2});
+
+    const net = data.total_income - data.total_expense;
+    const netEl = document.getElementById('netAmount');
+    netEl.textContent = net.toLocaleString('th-TH', {minimumFractionDigits: 2});
+    netEl.parentElement.classList.toggle('negative', net < 0);
+}
+
+function renderCategoryChart(data) {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+
+    if (categoryChart) {
+        categoryChart.destroy();
+    }
+
+    const labels = data.by_category.map(c => categoryNames[c.category] || c.category);
+    const values = data.by_category.map(c => c.amount);
+    const colors = data.by_category.map(c => categoryColors[c.category] || '#999');
+
+    categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw.toLocaleString('th-TH');
+                            const percent = data.by_category[context.dataIndex].percent_of_expense.toFixed(1);
+                            return `${context.label}: ${value} บาท (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Custom legend
+    const legendEl = document.getElementById('categoryLegend');
+    legendEl.innerHTML = data.by_category.map((c, i) => `
+        <div class="legend-item">
+            <span class="legend-color" style="background: ${colors[i]}"></span>
+            <span class="legend-label">${labels[i]}</span>
+            <span class="legend-value">${c.amount.toLocaleString('th-TH')} (${c.percent_of_expense.toFixed(1)}%)</span>
+        </div>
+    `).join('');
+}
+
+function renderChannelChart(data) {
+    const ctx = document.getElementById('channelChart').getContext('2d');
+
+    if (channelChart) {
+        channelChart.destroy();
+    }
+
+    const labels = data.by_channel.map(c => c.channel.toUpperCase());
+    const values = data.by_channel.map(c => c.amount);
+
+    channelChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'จำนวนเงิน (บาท)',
+                data: values,
+                backgroundColor: '#36A2EB',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('th-TH');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function loadDashboard(from, to) {
+    const data = await fetchDashboard(from, to);
+    if (!data) return;
+
+    updateSummaryCards(data);
+    renderCategoryChart(data);
+    renderChannelChart(data);
+}
+
+// Event listeners
+document.querySelectorAll('.btn-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const range = getDateRange(btn.dataset.range);
+        document.getElementById('fromDate').value = range.from;
+        document.getElementById('toDate').value = range.to;
+        loadDashboard(range.from, range.to);
+    });
+});
+
+document.getElementById('applyRange').addEventListener('click', () => {
+    const from = document.getElementById('fromDate').value;
+    const to = document.getElementById('toDate').value;
+    if (from && to) {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        loadDashboard(from, to);
+    }
+});
+
+// Initial load
+const initialRange = getDateRange('month');
+document.getElementById('fromDate').value = initialRange.from;
+document.getElementById('toDate').value = initialRange.to;
+loadDashboard(initialRange.from, initialRange.to);
+</script>
+{{end}}

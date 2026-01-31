@@ -1,0 +1,40 @@
+{{define "content"}}
+<div class="history-section">
+    <h1>Transaction History</h1>
+    {{if .Transactions}}
+    <div class="transactions-list">
+        {{range .Transactions}}
+        <div class="transaction-card">
+            {{if or .SlipImagePath .ImagePath}}
+            <div class="transaction-thumb">
+                <img src="/uploads/{{if .SlipImagePath}}{{.SlipImagePath}}{{else}}{{.ImagePath}}{{end}}" alt="Slip">
+            </div>
+            {{end}}
+            <div class="transaction-info">
+                <div class="transaction-amount {{.Direction}}">
+                    {{if eq .Direction "income"}}+{{else}}-{{end}}{{printf "%.2f" .Amount}} {{.Currency}}
+                </div>
+                <div class="transaction-details">
+                    {{if .Description}}<span>{{.Description}}</span>{{end}}
+                </div>
+                <div class="transaction-meta">
+                    <span class="channel-badge">{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}</span>
+                    <span class="category-badge">{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}</span>
+                    <span class="status-badge status-{{.Status}}">{{.Status}}</span>
+                    {{if .TxnDate}}<span class="date">{{.TxnDate}}</span>{{else}}<span class="date">{{.CreatedAt}}</span>{{end}}
+                </div>
+            </div>
+            <a href="/transactions/{{.ID}}/confirm" class="btn btn-small">Edit</a>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>No transactions yet</p>
+        <a href="/chat" class="btn btn-primary">Start chatting</a>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}{{end}}
