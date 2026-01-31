@@ -28,6 +28,22 @@ Personal finance tracker with chat + slip OCR. Run locally on your PC.
 - macOS: `scripts/setup-macos.sh` (uses Homebrew)
 - Linux (Debian/Ubuntu): `scripts/setup-linux.sh` (uses apt)
 
+## Release versioning
+
+Use the release script to bump version and tag:
+
+```bash
+make release_major
+make release_minor
+make release_patch
+
+```
+then 
+```bash
+git push origin release/vX.X.X
+git push origin release
+```
+
 3) Open in browser:
 
 ```
