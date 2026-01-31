@@ -10,12 +10,21 @@
 <body>
     <nav class="navbar">
         <a href="/" class="logo">Cash Track</a>
-        <div class="nav-links">
+        <div class="nav-actions">
+            <div class="user-badge nav-user-badge" id="userBadge">U</div>
+            <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+        <div class="nav-links" id="navLinks">
             <a href="/dashboard">Dashboard</a>
             <a href="/history">History</a>
+            <a href="/users">Users</a>
         </div>
         <div class="user-switch">
-            <div class="user-badge" id="userBadge">U</div>
+            <div class="user-badge">U</div>
             <div class="user-controls">
                 <select id="userSelect"></select>
                 <div class="user-meta"></div>
@@ -44,7 +53,7 @@
                 option.textContent = user.name;
                 if (user.id === data.current_user_id) {
                     option.selected = true;
-                    badge.textContent = user.name ? user.name.trim().charAt(0).toUpperCase() : 'U';
+                    updateBadge(user.name);
                     if (cutoffBtn) {
                         cutoffBtn.textContent = `ตัดรอบทุกๆวันที่ ${user.cutoff_day}`;
                         cutoffBtn.dataset.cutoff = user.cutoff_day;
@@ -84,6 +93,7 @@
 
             const userId = parseInt(select.value, 10);
             if (!userId) return;
+            updateBadge(select.options[select.selectedIndex]?.textContent || 'U');
             await fetch('/api/users/select', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -91,6 +101,13 @@
             });
             window.location.reload();
         });
+
+        function updateBadge(name) {
+            const letter = name ? name.trim().charAt(0).toUpperCase() : 'U';
+            document.querySelectorAll('#userBadge, .user-switch .user-badge').forEach((el) => {
+                if (el) el.textContent = letter;
+            });
+        }
 
         if (cutoffBtn) {
             cutoffBtn.addEventListener('click', async () => {
@@ -118,7 +135,18 @@
             });
         }
 
+
         await loadUsers();
+    })();
+
+    (function initNavToggle() {
+        const toggle = document.getElementById('navToggle');
+        const links = document.getElementById('navLinks');
+        if (!toggle || !links) return;
+        toggle.addEventListener('click', () => {
+            const isOpen = links.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
     })();
     </script>
 </body>

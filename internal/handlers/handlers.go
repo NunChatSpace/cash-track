@@ -109,3 +109,7 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 		"Transactions": views,
 	}))
 }
+
+func (h *Handler) UsersPage(w http.ResponseWriter, r *http.Request) {
+	h.renderTemplate(w, "users.html", h.withUserContext(w, r, nil))
+}

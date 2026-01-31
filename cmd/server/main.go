@@ -55,6 +55,7 @@ func main() {
 	r.Get("/chat", h.ChatPage)
 	r.Get("/dashboard", h.DashboardPage)
 	r.Get("/history", h.History)
+	r.Get("/users", h.UsersPage)
 	r.Get("/transactions/{id}/confirm", h.ConfirmPage)
 
 	// API - Chat
@@ -72,6 +73,7 @@ func main() {
 	r.Post("/api/users", h.CreateUser)
 	r.Post("/api/users/select", h.SelectUser)
 	r.Patch("/api/users/{id}", h.UpdateCutoff)
+	r.Delete("/api/users/{id}", h.DeleteUser)
 
 	// API - Dashboard
 	r.Get("/api/dashboard/summary", h.DashboardSummary)

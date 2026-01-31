@@ -1,0 +1,63 @@
+{{define "content"}}
+<div class="users-container">
+    <h1>Users</h1>
+    <div class="user-form">
+        <input type="text" id="newUserName" placeholder="New user name">
+        <button class="btn btn-primary" id="createUserBtn">Add user</button>
+    </div>
+    <div class="users-list" id="usersList"></div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+const usersList = document.getElementById('usersList');
+const createBtn = document.getElementById('createUserBtn');
+const nameInput = document.getElementById('newUserName');
+
+async function loadUsers() {
+    const resp = await fetch('/api/users');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    usersList.innerHTML = '';
+    data.users.forEach((user) => {
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        row.innerHTML = `
+            <div class="user-row-name">${user.name}</div>
+            <div class="user-row-meta">Cutoff ${user.cutoff_day}</div>
+            <button class="btn btn-small btn-secondary" data-id="${user.id}" ${user.name === 'default' ? 'disabled' : ''}>Remove</button>
+        `;
+        row.querySelector('button').addEventListener('click', async () => {
+            if (user.name === 'default') return;
+            if (!confirm('Remove this user and all their transactions?')) return;
+            const resp = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
+            if (resp.ok) {
+                loadUsers();
+            } else {
+                alert('Failed to remove user');
+            }
+        });
+        usersList.appendChild(row);
+    });
+}
+
+createBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    const resp = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+    });
+    if (resp.ok) {
+        nameInput.value = '';
+        loadUsers();
+    } else {
+        alert('Failed to add user');
+    }
+});
+
+loadUsers();
+</script>
+{{end}}

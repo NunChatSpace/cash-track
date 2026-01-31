@@ -75,6 +75,15 @@ func (r *Repository) UpdateUserCutoff(id int64, cutoffDay int) (*models.User, er
 	return r.GetUser(id)
 }
 
+func (r *Repository) DeleteUser(id int64) error {
+	_, err := r.db.Exec(`DELETE FROM transactions WHERE user_id = ?`, id)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.Exec(`DELETE FROM users WHERE id = ?`, id)
+	return err
+}
+
 // CreateTransaction creates a new transaction from a slip image
 func (r *Repository) CreateTransaction(userID int64, slipImagePath string) (*models.Transaction, error) {
 	result, err := r.db.Exec(

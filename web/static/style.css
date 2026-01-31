@@ -19,6 +19,7 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .logo {
@@ -37,6 +38,27 @@ body {
 
 .nav-links a:hover {
     opacity: 1;
+}
+
+.nav-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.nav-toggle span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: white;
+    margin: 4px 0;
+    border-radius: 2px;
 }
 
 .user-switch {
@@ -79,17 +101,34 @@ body {
 .user-switch select {
     padding: 0.35rem 0.6rem;
     border-radius: 10px;
-    border: none;
-    background: white;
+    border: 1px solid #c7d2fe;
+    background: #f8fafc;
     color: #1f2937;
     font-weight: 600;
     min-width: 140px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.user-controls #userSelect {
+    width: 100%;
+}
+
+.user-switch select:focus {
+    outline: none;
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    background: #ffffff;
 }
 
 .user-meta {
     display: flex;
     gap: 0.4rem;
     align-items: center;
+}
+
+.user-meta .btn {
+    padding: 0.25rem 0.6rem;
 }
 
 .user-cutoff {
@@ -457,6 +496,52 @@ body {
     color: #666;
 }
 
+/* Users page */
+.users-container {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.user-form {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.user-form input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.user-row {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.user-row-name {
+    font-weight: 600;
+}
+
+.user-row-meta {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
 /* Chat Section */
 .chat-container {
     max-width: 800px;
@@ -659,6 +744,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     margin-left: auto;
+    flex-wrap: wrap;
 }
 
 .custom-range input[type="date"] {
@@ -783,6 +869,54 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .navbar {
+        padding: 0.75rem 1rem;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
+    }
+
+    .nav-actions {
+        display: inline-flex;
+        margin-left: auto;
+    }
+
+    .nav-links {
+        width: 100%;
+        display: none;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding-top: 0.5rem;
+    }
+
+    .nav-links.open {
+        display: flex;
+    }
+
+    .user-switch {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .user-switch .user-badge {
+        display: none;
+    }
+
+    .user-switch select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .user-switch {
+        max-width: 100%;
+    }
+
+    .user-meta {
+        width: 100%;
+        flex-wrap: wrap;
+    }
     .confirm-container {
         grid-template-columns: 1fr;
     }
@@ -813,5 +947,113 @@ body {
     .custom-range {
         margin-left: 0;
         margin-top: 0.5rem;
+        width: 100%;
+    }
+
+    .custom-range span {
+        display: none;
+    }
+
+    .custom-range input[type="date"] {
+        width: 100%;
+    }
+
+    .custom-range .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .user-form {
+        flex-direction: column;
+    }
+
+    .user-row {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+
+    .users-container {
+        padding: 0 0.5rem;
+    }
+
+    .user-row button {
+        width: 100%;
+    }
+
+    .custom-range .user-cutoff {
+        width: 100%;
+        text-align: center;
+    }
+
+    .date-range-picker .btn-filter {
+        width: 100%;
+        text-align: center;
+    }
+
+    .chat-container {
+        height: auto;
+        min-height: calc(100vh - 180px);
+    }
+
+    .chat-messages {
+        padding: 1rem;
+    }
+
+    .message {
+        max-width: 100%;
+    }
+
+    .input-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-upload {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .chat-container {
+        border-radius: 10px;
+    }
+
+    .chat-input-area {
+        padding: 0.75rem;
+    }
+
+    .input-row input[type="text"] {
+        border-radius: 12px;
+    }
+
+    .summary-cards {
+        gap: 1rem;
+    }
+
+    .chart-container {
+        padding: 1rem;
+    }
+}
+.nav-actions {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.nav-user-badge {
+    width: 34px;
+    height: 34px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .nav-actions {
+        display: inline-flex;
     }
 }
