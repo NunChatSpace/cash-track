@@ -8,8 +8,7 @@ bin/
 *.db-wal
 
 # Uploads
-uploads/*
-!uploads/.gitkeep
+uploads/
 
 # Environment
 .env
