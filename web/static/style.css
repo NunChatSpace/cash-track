@@ -9,6 +9,7 @@ body {
     background: #f5f5f5;
     color: #333;
     line-height: 1.6;
+    overflow-x: hidden;
 }
 
 .navbar {
@@ -284,6 +285,7 @@ body {
 .slip-preview img {
     width: 100%;
     border-radius: 8px;
+    height: auto;
 }
 
 .slip-preview .no-image {
@@ -307,6 +309,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .form-group label {
@@ -919,6 +923,29 @@ body {
     }
     .confirm-container {
         grid-template-columns: 1fr;
+        padding: 1.25rem;
+        overflow-x: hidden;
+    }
+
+    .confirm-form {
+        width: 100%;
+    }
+
+    .confirm-form input,
+    .confirm-form select,
+    .confirm-form textarea {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        text-align: center;
     }
 
     .transaction-card {

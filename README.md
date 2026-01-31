@@ -34,6 +34,22 @@ Personal finance tracker with chat + slip OCR. Run locally on your PC.
 http://localhost:8080
 ```
 
+## Example Usage
+
+### Chat
+- `กินข้าว 50 บาท เงินสด`
+- `เมื่อวาน Shopee 320 บาท`
+- `เดือนนี้ใช้ไปเท่าไหร่`
+
+### Slip upload (OCR)
+- Upload a receipt image in chat → the system extracts amount/date/channel
+
+### Screenshots
+Add images here:
+- `docs/screenshots/chat.png`
+- `docs/screenshots/dashboard.png`
+- `docs/screenshots/history.png`
+
 ## Stop services
 
 ```bash
