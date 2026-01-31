@@ -62,7 +62,7 @@ http://localhost:8080
 
 ### Screenshots
 
-![Cash Track demo](docs/screenshots/demo.gif)
+<video src="docs/screenshots/demo.mp4" controls loop muted playsinline></video>
 
 ## Stop services
 
