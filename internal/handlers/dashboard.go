@@ -9,8 +9,9 @@ import (
 // DashboardSummary handles GET /api/dashboard/summary
 func (h *Handler) DashboardSummary(w http.ResponseWriter, r *http.Request) {
 	from, to := getDateRange(r)
+	userID, _ := h.currentUserID(w, r)
 
-	summary, err := h.repo.GetDashboardSummary(from, to)
+	summary, err := h.repo.GetDashboardSummary(userID, from, to)
 	if err != nil {
 		http.Error(w, "Failed to get summary", http.StatusInternalServerError)
 		return
@@ -23,8 +24,9 @@ func (h *Handler) DashboardSummary(w http.ResponseWriter, r *http.Request) {
 // DashboardByCategory handles GET /api/dashboard/by-category
 func (h *Handler) DashboardByCategory(w http.ResponseWriter, r *http.Request) {
 	from, to := getDateRange(r)
+	userID, _ := h.currentUserID(w, r)
 
-	categories, err := h.repo.GetExpenseByCategory(from, to)
+	categories, err := h.repo.GetExpenseByCategory(userID, from, to)
 	if err != nil {
 		http.Error(w, "Failed to get category data", http.StatusInternalServerError)
 		return
@@ -37,8 +39,9 @@ func (h *Handler) DashboardByCategory(w http.ResponseWriter, r *http.Request) {
 // DashboardByChannel handles GET /api/dashboard/by-channel
 func (h *Handler) DashboardByChannel(w http.ResponseWriter, r *http.Request) {
 	from, to := getDateRange(r)
+	userID, _ := h.currentUserID(w, r)
 
-	channels, err := h.repo.GetExpenseByChannel(from, to)
+	channels, err := h.repo.GetExpenseByChannel(userID, from, to)
 	if err != nil {
 		http.Error(w, "Failed to get channel data", http.StatusInternalServerError)
 		return
@@ -50,7 +53,7 @@ func (h *Handler) DashboardByChannel(w http.ResponseWriter, r *http.Request) {
 
 // DashboardPage renders the dashboard UI
 func (h *Handler) DashboardPage(w http.ResponseWriter, r *http.Request) {
-	h.renderTemplate(w, "dashboard.html", nil)
+	h.renderTemplate(w, "dashboard.html", h.withUserContext(w, r, nil))
 }
 
 // getDateRange extracts from/to dates from query params, defaults to current month

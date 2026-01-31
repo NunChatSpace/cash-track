@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"net"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -66,13 +67,57 @@ func main() {
 	r.Patch("/api/transactions/{id}/confirm", h.ConfirmTransaction)
 	r.Delete("/api/transactions/{id}", h.DeleteTransaction)
 
+	// API - Users
+	r.Get("/api/users", h.ListUsers)
+	r.Post("/api/users", h.CreateUser)
+	r.Post("/api/users/select", h.SelectUser)
+	r.Patch("/api/users/{id}", h.UpdateCutoff)
+
 	// API - Dashboard
 	r.Get("/api/dashboard/summary", h.DashboardSummary)
 	r.Get("/api/dashboard/by-category", h.DashboardByCategory)
 	r.Get("/api/dashboard/by-channel", h.DashboardByChannel)
 
 	log.Printf("Server starting on http://localhost:%s", cfg.ServerPort)
+	for _, ip := range lanIPs() {
+		log.Printf("LAN access: http://%s:%s", ip, cfg.ServerPort)
+	}
 	if err := http.ListenAndServe(":"+cfg.ServerPort, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func lanIPs() []string {
+	var ips []string
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return ips
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue
+			}
+			ips = append(ips, ip.String())
+		}
+	}
+	return ips
 }

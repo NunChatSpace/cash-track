@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -32,10 +33,17 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, _ := h.currentUserID(w, r)
+	log.Printf("Chat request user_id=%d message=%q image=%v", userID, req.Message, req.ImagePath != nil && *req.ImagePath != "")
+
 	// If image path provided, run OCR first
 	var ocrText *string
 	if req.ImagePath != nil && *req.ImagePath != "" {
-		text, err := h.ocrClient.ExtractText(*req.ImagePath)
+		imagePath := *req.ImagePath
+		if !filepath.IsAbs(imagePath) && !strings.Contains(imagePath, ":\\") {
+			imagePath = h.storage.GetPath(imagePath)
+		}
+		text, err := h.ocrClient.ExtractText(imagePath)
 		if err != nil {
 			log.Printf("OCR failed: %v", err)
 		} else {
@@ -50,25 +58,34 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 		respondChat(w, "ขออภัย ไม่สามารถประมวลผลได้ กรุณาลองใหม่", nil, nil)
 		return
 	}
+	log.Printf("Chat parsed intent=%s confidence=%.2f", llmResp.Intent, llmResp.Confidence)
 
 	// Handle based on intent
 	switch llmResp.Intent {
 	case "add_transaction", "bill_payment":
-		h.handleAddTransaction(w, llmResp, req.ImagePath, ocrText)
+		h.handleAddTransaction(w, r, req.Message, llmResp, req.ImagePath, ocrText)
 	case "query_summary":
-		h.handleQuerySummary(w, llmResp)
+		h.handleQuerySummary(w, r, llmResp)
 	default:
 		respondChat(w, "ไม่เข้าใจคำสั่ง กรุณาลองพิมพ์ใหม่ เช่น 'วันนี้กินข้าวไป 50 บาท' หรือ 'เดือนนี้ใช้ไปเท่าไหร่'", nil, llmResp)
 	}
 }
 
-func (h *Handler) handleAddTransaction(w http.ResponseWriter, resp *llm.ChatResponse, imagePath *string, ocrText *string) {
+func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, message string, resp *llm.ChatResponse, imagePath *string, ocrText *string) {
 	if resp.Transaction == nil {
 		respondChat(w, "ไม่พบข้อมูลรายการ กรุณาระบุจำนวนเงิน", nil, resp)
 		return
 	}
 
 	tx := resp.Transaction
+
+	if tx.Amount == 0 {
+		if message != "" {
+			tx.Amount = llm.ExtractAmountFromText(message)
+		} else if ocrText != nil {
+			tx.Amount = llm.ExtractAmountFromText(*ocrText)
+		}
+	}
 
 	// Set defaults
 	if tx.Currency == "" {
@@ -94,7 +111,9 @@ func (h *Handler) handleAddTransaction(w http.ResponseWriter, resp *llm.ChatResp
 	}
 
 	// Create transaction
+	userID, _ := h.currentUserID(w, r)
 	created, err := h.repo.CreateTransactionFromChat(
+		userID,
 		tx.TxnDate,
 		tx.Amount,
 		tx.Currency,
@@ -113,13 +132,14 @@ func (h *Handler) handleAddTransaction(w http.ResponseWriter, resp *llm.ChatResp
 		respondChat(w, "ไม่สามารถบันทึกรายการได้", nil, resp)
 		return
 	}
+	log.Printf("Transaction created id=%d status=%s amount=%.2f", created.ID, status, tx.Amount)
 
 	// Build reply
 	reply := buildTransactionReply(tx, status)
 	respondChat(w, reply, &created.ID, resp)
 }
 
-func (h *Handler) handleQuerySummary(w http.ResponseWriter, resp *llm.ChatResponse) {
+func (h *Handler) handleQuerySummary(w http.ResponseWriter, r *http.Request, resp *llm.ChatResponse) {
 	if resp.Filters == nil {
 		respondChat(w, "ไม่เข้าใจคำถาม กรุณาลองใหม่", nil, resp)
 		return
@@ -128,10 +148,15 @@ func (h *Handler) handleQuerySummary(w http.ResponseWriter, resp *llm.ChatRespon
 	filters := resp.Filters
 
 	// Calculate date range based on period
-	from, to := calculatePeriod(filters.Period)
+	userID, _ := h.currentUserID(w, r)
+	cutoff := 1
+	if user, err := h.repo.GetUser(userID); err == nil && user.CutoffDay >= 1 {
+		cutoff = user.CutoffDay
+	}
+	from, to := calculatePeriod(filters.Period, cutoff)
 
 	// Query database
-	summary, err := h.repo.QuerySummary(filters.Direction, from, to, filters.Category, filters.Channel)
+	summary, err := h.repo.QuerySummary(userID, filters.Direction, from, to, filters.Category, filters.Channel)
 	if err != nil {
 		log.Printf("Query failed: %v", err)
 		respondChat(w, "ไม่สามารถดึงข้อมูลได้", nil, resp)
@@ -208,7 +233,7 @@ func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.Query
 	return reply
 }
 
-func calculatePeriod(period llm.PeriodFilter) (string, string) {
+func calculatePeriod(period llm.PeriodFilter, cutoffDay int) (string, string) {
 	now := time.Now()
 
 	switch period.Type {
@@ -216,10 +241,7 @@ func calculatePeriod(period llm.PeriodFilter) (string, string) {
 		if period.From != "" && period.To != "" {
 			return period.From, period.To
 		}
-		// Current month
-		firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-		lastDay := firstDay.AddDate(0, 1, -1)
-		return firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02")
+		return cutoffRange(now, cutoffDay, 0)
 	case "year":
 		firstDay := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 		lastDay := time.Date(now.Year(), 12, 31, 0, 0, 0, 0, now.Location())
@@ -232,11 +254,41 @@ func calculatePeriod(period llm.PeriodFilter) (string, string) {
 	case "all":
 		return "1970-01-01", now.Format("2006-01-02")
 	default:
-		// Default to current month
-		firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-		lastDay := firstDay.AddDate(0, 1, -1)
-		return firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02")
+		return cutoffRange(now, cutoffDay, 0)
 	}
+}
+
+func cutoffRange(now time.Time, cutoffDay int, offsetMonths int) (string, string) {
+	if cutoffDay < 1 || cutoffDay > 30 {
+		cutoffDay = 1
+	}
+	year, month := now.Year(), now.Month()
+	if offsetMonths != 0 {
+		date := time.Date(year, month, 1, 0, 0, 0, 0, now.Location()).AddDate(0, offsetMonths, 0)
+		year, month = date.Year(), date.Month()
+	}
+
+	var from, to time.Time
+	if now.Day() >= cutoffDay {
+		from = time.Date(year, month, clampDay(year, month, cutoffDay), 0, 0, 0, 0, now.Location())
+		to = time.Date(year, month+1, clampDay(year, month+1, cutoffDay-1), 0, 0, 0, 0, now.Location())
+	} else {
+		from = time.Date(year, month-1, clampDay(year, month-1, cutoffDay), 0, 0, 0, 0, now.Location())
+		to = time.Date(year, month, clampDay(year, month, cutoffDay-1), 0, 0, 0, 0, now.Location())
+	}
+
+	return from.Format("2006-01-02"), to.Format("2006-01-02")
+}
+
+func clampDay(year int, month time.Month, day int) int {
+	if day < 1 {
+		return 1
+	}
+	last := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
+	if day > last {
+		return last
+	}
+	return day
 }
 
 func categoryThai(category string) string {
@@ -257,5 +309,5 @@ func categoryThai(category string) string {
 
 // ChatPage renders the chat UI
 func (h *Handler) ChatPage(w http.ResponseWriter, r *http.Request) {
-	h.renderTemplate(w, "chat.html", nil)
+	h.renderTemplate(w, "chat.html", h.withUserContext(w, r, nil))
 }

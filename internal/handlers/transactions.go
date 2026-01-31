@@ -31,7 +31,8 @@ func (h *Handler) UploadSlip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.repo.CreateTransaction(filename)
+	userID, _ := h.currentUserID(w, r)
+	tx, err := h.repo.CreateTransaction(userID, filename)
 	if err != nil {
 		log.Printf("Failed to create transaction: %v", err)
 		http.Error(w, "Failed to create transaction", http.StatusInternalServerError)
@@ -92,15 +93,16 @@ func (h *Handler) ConfirmPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.repo.GetTransaction(id)
+	userID, _ := h.currentUserID(w, r)
+	tx, err := h.repo.GetTransaction(userID, id)
 	if err != nil {
 		http.Error(w, "Transaction not found", http.StatusNotFound)
 		return
 	}
 
-	h.renderTemplate(w, "confirm.html", map[string]interface{}{
+	h.renderTemplate(w, "confirm.html", h.withUserContext(w, r, map[string]interface{}{
 		"Transaction": tx.ToView(),
-	})
+	}))
 }
 
 func (h *Handler) ConfirmTransaction(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +119,8 @@ func (h *Handler) ConfirmTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.ConfirmTransaction(id, req); err != nil {
+	userID, _ := h.currentUserID(w, r)
+	if err := h.repo.ConfirmTransaction(userID, id, req); err != nil {
 		log.Printf("Failed to confirm transaction %d: %v", id, err)
 		http.Error(w, "Failed to confirm transaction", http.StatusInternalServerError)
 		return
@@ -138,7 +141,8 @@ func (h *Handler) GetTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.repo.GetTransaction(id)
+	userID, _ := h.currentUserID(w, r)
+	tx, err := h.repo.GetTransaction(userID, id)
 	if err != nil {
 		http.Error(w, "Transaction not found", http.StatusNotFound)
 		return
@@ -156,13 +160,14 @@ func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.repo.GetTransaction(id)
+	userID, _ := h.currentUserID(w, r)
+	tx, err := h.repo.GetTransaction(userID, id)
 	if err != nil {
 		http.Error(w, "Transaction not found", http.StatusNotFound)
 		return
 	}
 
-	if err := h.repo.DeleteTransaction(id); err != nil {
+	if err := h.repo.DeleteTransaction(userID, id); err != nil {
 		log.Printf("Failed to delete transaction %d: %v", id, err)
 		http.Error(w, "Failed to delete transaction", http.StatusInternalServerError)
 		return
@@ -182,7 +187,8 @@ func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetRecentTransactions(w http.ResponseWriter, r *http.Request) {
-	transactions, err := h.repo.ListTransactions(20, 0)
+	userID, _ := h.currentUserID(w, r)
+	transactions, err := h.repo.ListTransactions(userID, 20, 0)
 	if err != nil {
 		http.Error(w, "Failed to load transactions", http.StatusInternalServerError)
 		return

@@ -75,7 +75,7 @@ All 6 core tasks from the spec have been implemented:
 
 ### Low Priority
 - [ ] User authentication
-- [ ] Multi-user support
+- [x] Multi-user support (user switch without auth)
 - [ ] Recurring transaction detection
 - [ ] Duplicate slip detection
 - [ ] Backup/restore database

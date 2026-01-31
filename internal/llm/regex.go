@@ -264,3 +264,8 @@ func parseSummaryFilters(text string) QueryFilters {
 
 	return filters
 }
+
+// ExtractAmountFromText exposes a minimal amount extractor for fallback usage.
+func ExtractAmountFromText(text string) float64 {
+	return parseAmount(strings.ToLower(text))
+}

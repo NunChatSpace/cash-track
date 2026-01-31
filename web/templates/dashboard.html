@@ -1,5 +1,5 @@
 {{define "content"}}
-<div class="dashboard-container">
+<div class="dashboard-container" data-cutoff-day="{{if .CurrentUser}}{{.CurrentUser.CutoffDay}}{{else}}29{{end}}">
     <h1>Dashboard</h1>
 
     <div class="date-range-picker">
@@ -7,6 +7,7 @@
         <button class="btn btn-filter" data-range="last-month">เดือนที่แล้ว</button>
         <button class="btn btn-filter" data-range="year">ปีนี้</button>
         <div class="custom-range">
+            <button type="button" class="user-cutoff" id="cutoffBtn">ตัดรอบทุกๆวันที่ {{if .CurrentUser}}{{.CurrentUser.CutoffDay}}{{else}}1{{end}}</button>
             <input type="date" id="fromDate">
             <span>ถึง</span>
             <input type="date" id="toDate">
@@ -74,13 +75,19 @@ const categoryNames = {
     'uncategorized': 'ไม่ระบุ'
 };
 
-const CUTOFF_DAY = 29; // Spending period starts on 29th of each month
+const container = document.querySelector('.dashboard-container');
+const CUTOFF_DAY = parseInt((container && container.dataset.cutoffDay) || '29', 10); // Spending period starts on cutoff day
 
 function formatDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function clampDay(year, month, day) {
+    const last = new Date(year, month + 1, 0).getDate();
+    return Math.min(Math.max(day, 1), last);
 }
 
 function getDateRange(range) {
@@ -92,22 +99,22 @@ function getDateRange(range) {
             // Current period: 29th of last month to 28th of this month
             if (now.getDate() >= CUTOFF_DAY) {
                 // We're in the new period (29th onwards)
-                from = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY);
-                to = new Date(now.getFullYear(), now.getMonth() + 1, CUTOFF_DAY - 1);
+                from = new Date(now.getFullYear(), now.getMonth(), clampDay(now.getFullYear(), now.getMonth(), CUTOFF_DAY));
+                to = new Date(now.getFullYear(), now.getMonth() + 1, clampDay(now.getFullYear(), now.getMonth() + 1, CUTOFF_DAY - 1));
             } else {
                 // We're still in the previous period (before 29th)
-                from = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY);
-                to = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1);
+                from = new Date(now.getFullYear(), now.getMonth() - 1, clampDay(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY));
+                to = new Date(now.getFullYear(), now.getMonth(), clampDay(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1));
             }
             break;
         case 'last-month':
             // Previous period
             if (now.getDate() >= CUTOFF_DAY) {
-                from = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY);
-                to = new Date(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1);
+                from = new Date(now.getFullYear(), now.getMonth() - 1, clampDay(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY));
+                to = new Date(now.getFullYear(), now.getMonth(), clampDay(now.getFullYear(), now.getMonth(), CUTOFF_DAY - 1));
             } else {
-                from = new Date(now.getFullYear(), now.getMonth() - 2, CUTOFF_DAY);
-                to = new Date(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY - 1);
+                from = new Date(now.getFullYear(), now.getMonth() - 2, clampDay(now.getFullYear(), now.getMonth() - 2, CUTOFF_DAY));
+                to = new Date(now.getFullYear(), now.getMonth() - 1, clampDay(now.getFullYear(), now.getMonth() - 1, CUTOFF_DAY - 1));
             }
             break;
         case 'year':

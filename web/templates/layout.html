@@ -11,16 +11,116 @@
     <nav class="navbar">
         <a href="/" class="logo">Cash Track</a>
         <div class="nav-links">
-            <a href="/chat">Chat</a>
             <a href="/dashboard">Dashboard</a>
             <a href="/history">History</a>
-            <a href="/">Upload</a>
+        </div>
+        <div class="user-switch">
+            <div class="user-badge" id="userBadge">U</div>
+            <div class="user-controls">
+                <select id="userSelect"></select>
+                <div class="user-meta"></div>
+            </div>
         </div>
     </nav>
     <main class="container">
         {{template "content" .}}
     </main>
     {{template "scripts" .}}
+    <script>
+    (async function initUserSwitch() {
+        const select = document.getElementById('userSelect');
+        const badge = document.getElementById('userBadge');
+        const cutoffBtn = document.getElementById('cutoffBtn');
+        if (!select || !badge) return;
+
+        async function loadUsers() {
+            const resp = await fetch('/api/users');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            select.innerHTML = '';
+            data.users.forEach((user) => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.name;
+                if (user.id === data.current_user_id) {
+                    option.selected = true;
+                    badge.textContent = user.name ? user.name.trim().charAt(0).toUpperCase() : 'U';
+                    if (cutoffBtn) {
+                        cutoffBtn.textContent = `ตัดรอบทุกๆวันที่ ${user.cutoff_day}`;
+                        cutoffBtn.dataset.cutoff = user.cutoff_day;
+                        cutoffBtn.dataset.userId = user.id;
+                    }
+                }
+                select.appendChild(option);
+            });
+
+            const addOption = document.createElement('option');
+            addOption.value = 'add';
+            addOption.textContent = '+ Add user';
+            select.appendChild(addOption);
+        }
+
+        select.addEventListener('change', async () => {
+            if (select.value === 'add') {
+                const name = prompt('New user name');
+                if (!name) {
+                    await loadUsers();
+                    return;
+                }
+                const resp = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                if (resp.ok) {
+                    await loadUsers();
+                    window.location.reload();
+                } else {
+                    alert('Failed to create user');
+                    await loadUsers();
+                }
+                return;
+            }
+
+            const userId = parseInt(select.value, 10);
+            if (!userId) return;
+            await fetch('/api/users/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId })
+            });
+            window.location.reload();
+        });
+
+        if (cutoffBtn) {
+            cutoffBtn.addEventListener('click', async () => {
+                const userId = parseInt(cutoffBtn.dataset.userId, 10);
+                if (!userId) return;
+                const current = cutoffBtn.dataset.cutoff || '1';
+                const input = prompt('ตัดรอบทุกๆวันที่ (1-30)', current);
+                if (!input) return;
+                const day = parseInt(input, 10);
+                if (!day || day < 1 || day > 30) {
+                    alert('ตัดรอบต้องอยู่ระหว่าง 1 ถึง 30');
+                    return;
+                }
+                const resp = await fetch(`/api/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cutoff_day: day })
+                });
+                if (resp.ok) {
+                    await loadUsers();
+                    window.location.reload();
+                } else {
+                    alert('Failed to update cutoff');
+                }
+            });
+        }
+
+        await loadUsers();
+    })();
+    </script>
 </body>
 </html>
 {{end}}

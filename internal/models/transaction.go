@@ -6,6 +6,7 @@ import (
 
 type Transaction struct {
 	ID            int64           `json:"id"`
+	UserID        sql.NullInt64   `json:"user_id"`
 	TxnDate       sql.NullString  `json:"txn_date"`
 	Amount        sql.NullFloat64 `json:"amount"`
 	Currency      string          `json:"currency"`
@@ -24,6 +25,7 @@ type Transaction struct {
 
 type TransactionView struct {
 	ID            int64   `json:"id"`
+	UserID        int64   `json:"user_id"`
 	TxnDate       string  `json:"txn_date"`
 	Amount        float64 `json:"amount"`
 	Currency      string  `json:"currency"`
@@ -51,6 +53,9 @@ func (t *Transaction) ToView() TransactionView {
 		CreatedAt: t.CreatedAt,
 	}
 
+	if t.UserID.Valid {
+		view.UserID = t.UserID.Int64
+	}
 	if t.TxnDate.Valid {
 		view.TxnDate = t.TxnDate.String
 		view.TransactionDate = t.TxnDate.String // Legacy

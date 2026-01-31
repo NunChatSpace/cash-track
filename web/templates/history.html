@@ -4,7 +4,7 @@
     {{if .Transactions}}
     <div class="transactions-list">
         {{range .Transactions}}
-        <div class="transaction-card" data-transaction-id="{{.ID}}">
+        <div class="transaction-card status-{{.Status}}" data-transaction-id="{{.ID}}" data-amount="{{.Amount}}" data-txn-date="{{.TxnDate}}" data-direction="{{.Direction}}" data-channel="{{.Channel}}" data-category="{{.Category}}" data-description="{{.Description}}" data-account-label="{{.AccountLabel}}">
             {{if or .SlipImagePath .ImagePath}}
             <div class="transaction-thumb">
                 <img src="/uploads/{{if .SlipImagePath}}{{.SlipImagePath}}{{else}}{{.ImagePath}}{{end}}" alt="Slip">
@@ -25,6 +25,9 @@
                 </div>
             </div>
             <div class="transaction-actions">
+                {{if eq .Status "pending"}}
+                <button type="button" class="btn btn-small btn-primary confirm-transaction" data-id="{{.ID}}">Confirm</button>
+                {{end}}
                 <a href="/transactions/{{.ID}}/confirm" class="btn btn-small">Edit</a>
                 <button type="button" class="btn btn-small btn-danger delete-transaction" data-id="{{.ID}}">Delete</button>
             </div>
@@ -57,6 +60,42 @@ document.querySelectorAll('.delete-transaction').forEach((btn) => {
             if (card) card.remove();
         } catch (err) {
             alert('Failed to delete transaction');
+        }
+    });
+});
+
+document.querySelectorAll('.confirm-transaction').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+        const card = btn.closest('.transaction-card');
+        if (!card) return;
+        const id = btn.dataset.id;
+        const payload = {
+            amount: parseFloat(card.dataset.amount) || 0,
+            txn_date: card.dataset.txnDate || '',
+            direction: card.dataset.direction || 'expense',
+            channel: card.dataset.channel || '',
+            account_label: card.dataset.accountLabel || '',
+            category: card.dataset.category || '',
+            description: card.dataset.description || ''
+        };
+        try {
+            const resp = await fetch(`/api/transactions/${id}/confirm`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) throw new Error('Confirm failed');
+            card.classList.remove('status-pending');
+            card.classList.add('status-confirmed');
+            const status = card.querySelector('.status-badge');
+            if (status) {
+                status.textContent = 'confirmed';
+                status.classList.remove('status-pending');
+                status.classList.add('status-confirmed');
+            }
+            btn.remove();
+        } catch (err) {
+            alert('Failed to confirm transaction');
         }
     });
 });

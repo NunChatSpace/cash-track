@@ -36,19 +36,27 @@ const previewImg = document.getElementById('previewImg');
 const removeImage = document.getElementById('removeImage');
 
 let selectedFile = null;
+let isSending = false;
 
-function addMessage(text, isUser = false, txId = null) {
+function addMessage(text, isUser = false, txId = null, isLoading = false) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'message-user' : 'message-bot'}`;
+    if (isLoading) {
+        div.classList.add('message-loading');
+    }
 
     let content = `<div class="message-content">${escapeHtml(text)}</div>`;
     if (txId) {
         content += `<a href="/transactions/${txId}/confirm" class="btn btn-small">ดู/แก้ไข</a>`;
     }
+    if (!isUser) {
+        content += `<div class="message-meta">${isLoading ? '<span class="typing-indicator"><span></span><span></span><span></span></span>' : 'ผู้ช่วย'} • ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>`;
+    }
 
     div.innerHTML = content;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
 }
 
 function escapeHtml(text) {
@@ -60,6 +68,9 @@ function escapeHtml(text) {
 async function sendMessage() {
     const message = messageInput.value.trim();
     if (!message && !selectedFile) return;
+    if (isSending) return;
+    isSending = true;
+    sendBtn.disabled = true;
 
     // Show user message
     if (message) {
@@ -70,6 +81,7 @@ async function sendMessage() {
     }
 
     messageInput.value = '';
+    const loadingMessage = addMessage('กำลังคิด...', false, null, true);
 
     // Prepare request
     const body = {
@@ -108,14 +120,34 @@ async function sendMessage() {
 
         if (response.ok) {
             const data = await response.json();
-            addMessage(data.reply_text, false, data.transaction_id);
+            loadingMessage.querySelector('.message-content').textContent = data.reply_text;
+            loadingMessage.classList.remove('message-loading');
+            const meta = loadingMessage.querySelector('.message-meta');
+            if (meta) {
+                meta.innerHTML = `ผู้ช่วย • ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
+            }
+            if (data.transaction_id) {
+                const link = document.createElement('a');
+                link.href = `/transactions/${data.transaction_id}/confirm`;
+                link.className = 'btn btn-small';
+                link.textContent = 'ดู/แก้ไข';
+                loadingMessage.appendChild(link);
+            }
         } else {
-            addMessage('เกิดข้อผิดพลาด กรุณาลองใหม่', false);
+            loadingMessage.querySelector('.message-content').textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+            loadingMessage.classList.remove('message-loading');
+            const meta = loadingMessage.querySelector('.message-meta');
+            if (meta) meta.textContent = 'ผู้ช่วย';
         }
     } catch (e) {
         console.error('Chat error:', e);
-        addMessage('ไม่สามารถเชื่อมต่อได้', false);
+        loadingMessage.querySelector('.message-content').textContent = 'ไม่สามารถเชื่อมต่อได้';
+        loadingMessage.classList.remove('message-loading');
+        const meta = loadingMessage.querySelector('.message-meta');
+        if (meta) meta.textContent = 'ผู้ช่วย';
     }
+    isSending = false;
+    sendBtn.disabled = false;
 }
 
 function clearImage() {
