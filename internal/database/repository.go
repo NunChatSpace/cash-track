@@ -275,41 +275,40 @@ func (r *Repository) QuerySummary(direction string, from, to string, category, c
 	}
 
 	// Build query based on filters - use created_at as fallback for txn_date
-	query := `
-		SELECT COALESCE(SUM(amount), 0)
+	baseQuery := `
 		FROM transactions
 		WHERE status = 'confirmed'
 		  AND COALESCE(NULLIF(txn_date, ''), date(created_at)) >= ?
 		  AND COALESCE(NULLIF(txn_date, ''), date(created_at)) <= ?`
 	args := []interface{}{from, to}
 
-	if direction == "expense" || direction == "income" {
-		query += ` AND direction = ?`
-		args = append(args, direction)
-	}
 	if category != "" {
-		query += ` AND category = ?`
+		baseQuery += ` AND category = ?`
 		args = append(args, category)
 	}
 	if channel != "" {
-		query += ` AND channel = ?`
+		baseQuery += ` AND channel = ?`
 		args = append(args, channel)
 	}
 
-	var total float64
-	err := r.db.QueryRow(query, args...).Scan(&total)
+	var err error
+	switch direction {
+	case "expense":
+		query := `SELECT COALESCE(SUM(amount), 0) ` + baseQuery + ` AND direction = 'expense'`
+		err = r.db.QueryRow(query, args...).Scan(&summary.TotalExpense)
+	case "income":
+		query := `SELECT COALESCE(SUM(amount), 0) ` + baseQuery + ` AND direction = 'income'`
+		err = r.db.QueryRow(query, args...).Scan(&summary.TotalIncome)
+	default:
+		query := `
+			SELECT
+				COALESCE(SUM(CASE WHEN direction = 'expense' THEN amount ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN direction = 'income' THEN amount ELSE 0 END), 0)
+			` + baseQuery
+		err = r.db.QueryRow(query, args...).Scan(&summary.TotalExpense, &summary.TotalIncome)
+	}
 	if err != nil {
 		return nil, err
-	}
-
-	if direction == "expense" {
-		summary.TotalExpense = total
-	} else if direction == "income" {
-		summary.TotalIncome = total
-	} else {
-		// Get both
-		summary.TotalExpense = total
-		summary.TotalIncome = total
 	}
 
 	return summary, nil

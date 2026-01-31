@@ -42,7 +42,7 @@ func (h *Handler) renderTemplate(w http.ResponseWriter, page string, data interf
 }
 
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
-	h.renderTemplate(w, "index.html", nil)
+	http.Redirect(w, r, "/chat", http.StatusFound)
 }
 
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {

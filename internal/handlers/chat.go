@@ -139,7 +139,7 @@ func (h *Handler) handleQuerySummary(w http.ResponseWriter, resp *llm.ChatRespon
 	}
 
 	// Build reply
-	reply := buildSummaryReplyText(summary.TotalExpense, summary.TotalIncome, filters)
+	reply := buildSummaryReplyText(summary.TotalExpense, summary.TotalIncome, filters, from, to)
 	respondChat(w, reply, nil, resp)
 }
 
@@ -184,14 +184,15 @@ func buildTransactionReply(tx *llm.ParsedTransaction, status string) string {
 	return reply
 }
 
-func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.QueryFilters) string {
+func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.QueryFilters, from, to string) string {
 	var reply string
 
-	if filters.Direction == "expense" || filters.Direction == "both" || filters.Direction == "" {
+	if filters.Direction == "expense" || filters.Direction == "" {
 		reply = fmt.Sprintf("ใช้ไป %.2f บาท", totalExpense)
-	}
-	if filters.Direction == "income" {
+	} else if filters.Direction == "income" {
 		reply = fmt.Sprintf("รายรับ %.2f บาท", totalIncome)
+	} else {
+		reply = fmt.Sprintf("รายจ่าย %.2f บาท, รายรับ %.2f บาท", totalExpense, totalIncome)
 	}
 
 	if filters.Category != "" {
@@ -199,6 +200,9 @@ func buildSummaryReplyText(totalExpense, totalIncome float64, filters *llm.Query
 	}
 	if filters.Channel != "" {
 		reply += fmt.Sprintf(" (%s)", filters.Channel)
+	}
+	if from != "" && to != "" {
+		reply += fmt.Sprintf(" ช่วง %s ถึง %s", from, to)
 	}
 
 	return reply
@@ -225,6 +229,8 @@ func calculatePeriod(period llm.PeriodFilter) (string, string) {
 		return today, today
 	case "range":
 		return period.From, period.To
+	case "all":
+		return "1970-01-01", now.Format("2006-01-02")
 	default:
 		// Default to current month
 		firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())

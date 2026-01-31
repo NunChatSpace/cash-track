@@ -185,7 +185,8 @@ func isSummaryQuery(text string) bool {
 		strings.Contains(text, "เดือนนี้") ||
 		strings.Contains(text, "เดือนที่แล้ว") ||
 		strings.Contains(text, "ปีนี้") ||
-		strings.Contains(text, "ปีที่แล้ว")
+		strings.Contains(text, "ปีที่แล้ว") ||
+		strings.Contains(text, "ทั้งหมด")
 }
 
 func parseSummaryFilters(text string) QueryFilters {
@@ -204,6 +205,10 @@ func parseSummaryFilters(text string) QueryFilters {
 	}
 
 	switch {
+	case strings.Contains(text, "ทั้งหมด"):
+		filters.Period = PeriodFilter{
+			Type: "all",
+		}
 	case strings.Contains(text, "เดือนที่แล้ว"):
 		previous := now.AddDate(0, -1, 0)
 		first := time.Date(previous.Year(), previous.Month(), 1, 0, 0, 0, 0, previous.Location())

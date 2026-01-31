@@ -102,6 +102,13 @@ func (c *Client) ParseChatMessage(message string, ocrText *string) (*ChatRespons
 		return parseWithRegex(message, ocrText), nil
 	}
 
+	if chatResp.Intent == "" || chatResp.Intent == "unknown" {
+		fallback := parseWithRegex(message, ocrText)
+		if fallback != nil && fallback.Intent != "" && fallback.Intent != "unknown" {
+			return fallback, nil
+		}
+	}
+
 	return &chatResp, nil
 }
 
