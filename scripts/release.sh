@@ -41,8 +41,8 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   git checkout -b "release/v${NEW_VERSION}" 2>/dev/null || git checkout "release/v${NEW_VERSION}"
   git add "${VERSION_FILE}"
   git commit -m "chore: release v${NEW_VERSION}" || true
-  git tag -a "release" -m "release v${NEW_VERSION}"
-  echo "Checked out release/v${NEW_VERSION} and tagged release"
+  git tag -a "v${NEW_VERSION}" -m "v${NEW_VERSION}"
+  echo "Checked out release/v${NEW_VERSION} and tagged v${NEW_VERSION}"
 else
   echo "Not a git repo; skipping tag."
 fi
