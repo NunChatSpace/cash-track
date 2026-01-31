@@ -61,10 +61,8 @@ http://localhost:8080
 - Upload a receipt image in chat → the system extracts amount/date/channel
 
 ### Screenshots
-Add images here:
-- `docs/screenshots/chat.png`
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/history.png`
+
+![Cash Track demo](docs/screenshots/demo.gif)
 
 ## Stop services
 
