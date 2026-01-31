@@ -41,7 +41,7 @@ make release_patch
 then 
 ```bash
 git push origin release/vX.X.X
-git push origin release
+git push origin vX.X.X
 ```
 
 3) Open in browser:
