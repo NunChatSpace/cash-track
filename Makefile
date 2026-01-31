@@ -40,3 +40,7 @@ clean:
 # Full setup
 setup: deps services-up pull-model
 	@echo "Setup complete! Run 'make run' to start the server"
+
+# Easy start (for non-technical users)
+easy:
+	./scripts/start.sh
