@@ -64,6 +64,7 @@ func main() {
 	r.Get("/api/transactions/recent", h.GetRecentTransactions)
 	r.Get("/api/transactions/{id}", h.GetTransaction)
 	r.Patch("/api/transactions/{id}/confirm", h.ConfirmTransaction)
+	r.Delete("/api/transactions/{id}", h.DeleteTransaction)
 
 	// API - Dashboard
 	r.Get("/api/dashboard/summary", h.DashboardSummary)

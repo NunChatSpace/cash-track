@@ -148,6 +148,39 @@ func (h *Handler) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tx.ToView())
 }
 
+func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid transaction ID", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := h.repo.GetTransaction(id)
+	if err != nil {
+		http.Error(w, "Transaction not found", http.StatusNotFound)
+		return
+	}
+
+	if err := h.repo.DeleteTransaction(id); err != nil {
+		log.Printf("Failed to delete transaction %d: %v", id, err)
+		http.Error(w, "Failed to delete transaction", http.StatusInternalServerError)
+		return
+	}
+
+	if tx.SlipImagePath.Valid && tx.SlipImagePath.String != "" {
+		if err := h.storage.Delete(tx.SlipImagePath.String); err != nil {
+			log.Printf("Failed to delete slip for transaction %d: %v", id, err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"redirect": "/history",
+	})
+}
+
 func (h *Handler) GetRecentTransactions(w http.ResponseWriter, r *http.Request) {
 	transactions, err := h.repo.ListTransactions(20, 0)
 	if err != nil {

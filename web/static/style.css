@@ -149,6 +149,15 @@ body {
     font-size: 0.875rem;
 }
 
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
 /* Confirm Section */
 .confirm-section {
     max-width: 900px;
@@ -278,6 +287,12 @@ body {
 
 .transaction-info {
     flex: 1;
+}
+
+.transaction-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 .transaction-amount {

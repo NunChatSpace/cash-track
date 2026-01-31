@@ -4,7 +4,7 @@
     {{if .Transactions}}
     <div class="transactions-list">
         {{range .Transactions}}
-        <div class="transaction-card">
+        <div class="transaction-card" data-transaction-id="{{.ID}}">
             {{if or .SlipImagePath .ImagePath}}
             <div class="transaction-thumb">
                 <img src="/uploads/{{if .SlipImagePath}}{{.SlipImagePath}}{{else}}{{.ImagePath}}{{end}}" alt="Slip">
@@ -24,7 +24,10 @@
                     {{if .TxnDate}}<span class="date">{{.TxnDate}}</span>{{else}}<span class="date">{{.CreatedAt}}</span>{{end}}
                 </div>
             </div>
-            <a href="/transactions/{{.ID}}/confirm" class="btn btn-small">Edit</a>
+            <div class="transaction-actions">
+                <a href="/transactions/{{.ID}}/confirm" class="btn btn-small">Edit</a>
+                <button type="button" class="btn btn-small btn-danger delete-transaction" data-id="{{.ID}}">Delete</button>
+            </div>
         </div>
         {{end}}
     </div>
@@ -37,4 +40,25 @@
 </div>
 {{end}}
 
-{{define "scripts"}}{{end}}
+{{define "scripts"}}
+<script>
+document.querySelectorAll('.delete-transaction').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!id) return;
+        if (!confirm('Delete this transaction?')) return;
+
+        try {
+            const resp = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+            if (!resp.ok) {
+                throw new Error('Delete failed');
+            }
+            const card = btn.closest('.transaction-card');
+            if (card) card.remove();
+        } catch (err) {
+            alert('Failed to delete transaction');
+        }
+    });
+});
+</script>
+{{end}}

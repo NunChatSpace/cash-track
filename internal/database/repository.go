@@ -89,6 +89,21 @@ func (r *Repository) GetTransaction(id int64) (*models.Transaction, error) {
 	return tx, nil
 }
 
+func (r *Repository) DeleteTransaction(id int64) error {
+	result, err := r.db.Exec(`DELETE FROM transactions WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 // UpdateOCRResult updates a transaction with OCR/LLM parsed data
 func (r *Repository) UpdateOCRResult(
 	id int64,
