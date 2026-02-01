@@ -55,22 +55,62 @@ body {
 .nav-toggle {
     display: none;
     background: transparent;
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.nav-toggle span {
-    display: block;
+.nav-toggle-icon {
     width: 22px;
-    height: 2px;
-    background: white;
-    margin: 4px 0;
-    border-radius: 2px;
+    height: 22px;
+    display: block;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    background-color: rgba(255, 255, 255, 0.95);
+    -webkit-mask-image: var(--icon-url);
+    mask-image: var(--icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
+.nav-toggle-close {
+    display: none;
+}
+
+.nav-toggle.open .nav-toggle-open {
+    display: none;
+}
+
+.nav-toggle.open .nav-toggle-close {
+    display: block;
+}
+
+.nav-toggle:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+}
+
+.nav-toggle:active {
+    transform: scale(0.96);
+}
+
+.nav-toggle.open .nav-toggle-close {
+    transform: rotate(90deg);
+}
+
+.nav-toggle.open {
+    background: rgba(255, 255, 255, 0.28);
+    border-color: rgba(255, 255, 255, 0.55);
 }
 
 .lang-switch .custom-select {
@@ -91,6 +131,9 @@ body {
 .user-badge {
     width: 36px;
     height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    flex: 0 0 36px;
     border-radius: 999px;
     background: linear-gradient(135deg, #93c5fd, #dbeafe);
     color: #1e3a8a;
@@ -105,6 +148,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    width: 100%;
 }
 
 .user-label {
@@ -996,6 +1040,7 @@ body {
 @media (max-width: 768px) {
     .navbar {
         padding: 0.75rem 1rem;
+        align-items: stretch;
     }
 
     .nav-toggle {
@@ -1029,15 +1074,53 @@ body {
         width: 100%;
         justify-content: flex-start;
         flex-wrap: wrap;
+        align-items: stretch;
+        flex-direction: column;
+        flex: 1 1 100%;
+        align-self: stretch;
     }
 
     .user-switch .user-badge {
         display: none;
     }
 
+    .user-controls {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .user-controls .custom-select {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: block;
+        flex: 1 1 100%;
+    }
+
+    .user-controls .custom-select-trigger {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: flex;
+        flex: 1 1 100%;
+    }
+
     .user-switch select {
         width: 100%;
         min-width: 0;
+    }
+
+    .user-switch .custom-select {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 100%;
+    }
+
+    .user-switch .custom-select-trigger {
+        width: 100%;
+    }
+
+    .user-switch .custom-select,
+    .user-switch .custom-select-trigger {
+        width: 100% !important;
     }
 
     .user-switch {
