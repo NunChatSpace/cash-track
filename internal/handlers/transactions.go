@@ -188,7 +188,23 @@ func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetRecentTransactions(w http.ResponseWriter, r *http.Request) {
 	userID, _ := h.currentUserID(w, r)
-	transactions, err := h.repo.ListTransactions(userID, 20, 0)
+	limit := 20
+	offset := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			limit = parsed
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	transactions, err := h.repo.ListTransactions(userID, limit, offset)
 	if err != nil {
 		http.Error(w, "Failed to load transactions", http.StatusInternalServerError)
 		return

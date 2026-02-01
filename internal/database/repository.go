@@ -114,6 +114,7 @@ func (r *Repository) CreateTransactionFromChat(
 	accountLabel string,
 	category string,
 	description string,
+	chatMessage string,
 	slipImagePath string,
 	rawOCRText string,
 	llmConfidence float64,
@@ -122,11 +123,11 @@ func (r *Repository) CreateTransactionFromChat(
 	result, err := r.db.Exec(`
 		INSERT INTO transactions (
 			user_id, txn_date, amount, currency, direction, channel, account_label,
-			category, description, slip_image_path, raw_ocr_text, llm_confidence, status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			category, description, chat_message, slip_image_path, raw_ocr_text, llm_confidence, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		userID, nullString(txnDate), nullFloat(amount), currency, direction,
 		nullString(channel), nullString(accountLabel), nullString(category),
-		nullString(description), nullString(slipImagePath), nullString(rawOCRText),
+		nullString(description), nullString(chatMessage), nullString(slipImagePath), nullString(rawOCRText),
 		nullFloat(llmConfidence), status,
 	)
 	if err != nil {
@@ -145,12 +146,12 @@ func (r *Repository) GetTransaction(userID, id int64) (*models.Transaction, erro
 	tx := &models.Transaction{}
 	err := r.db.QueryRow(`
 		SELECT id, user_id, txn_date, amount, currency, direction, channel, account_label,
-		       category, description, slip_image_path, raw_ocr_text, llm_confidence,
+		       category, description, chat_message, slip_image_path, raw_ocr_text, llm_confidence,
 		       status, created_at, updated_at
 		FROM transactions WHERE id = ? AND user_id = ?
 	`, id, userID).Scan(
 		&tx.ID, &tx.UserID, &tx.TxnDate, &tx.Amount, &tx.Currency, &tx.Direction,
-		&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description,
+		&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description, &tx.ChatMessage,
 		&tx.SlipImagePath, &tx.RawOCRText, &tx.LLMConfidence,
 		&tx.Status, &tx.CreatedAt, &tx.UpdatedAt,
 	)
@@ -210,10 +211,38 @@ func (r *Repository) ConfirmTransaction(userID, id int64, req models.ConfirmRequ
 	return err
 }
 
+// UpdateTransactionFromChat updates an existing transaction with parsed chat data.
+func (r *Repository) UpdateTransactionFromChat(
+	userID, id int64,
+	txnDate string,
+	amount float64,
+	currency string,
+	direction string,
+	channel string,
+	accountLabel string,
+	category string,
+	description string,
+	chatMessage string,
+	rawOCRText string,
+	llmConfidence float64,
+	status string,
+) error {
+	_, err := r.db.Exec(`
+		UPDATE transactions
+		SET txn_date = ?, amount = ?, currency = ?, direction = ?, channel = ?,
+		    account_label = ?, category = ?, description = ?, chat_message = ?,
+		    raw_ocr_text = ?, llm_confidence = ?, status = ?, updated_at = datetime('now')
+		WHERE id = ? AND user_id = ?
+	`, nullString(txnDate), nullFloat(amount), nullString(currency), nullString(direction),
+		nullString(channel), nullString(accountLabel), nullString(category), nullString(description),
+		nullString(chatMessage), nullString(rawOCRText), nullFloat(llmConfidence), nullString(status), id, userID)
+	return err
+}
+
 func (r *Repository) ListTransactions(userID int64, limit, offset int) ([]models.Transaction, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, txn_date, amount, currency, direction, channel, account_label,
-		       category, description, slip_image_path, raw_ocr_text, llm_confidence,
+		       category, description, chat_message, slip_image_path, raw_ocr_text, llm_confidence,
 		       status, created_at, updated_at
 		FROM transactions
 		WHERE user_id = ?
@@ -230,7 +259,7 @@ func (r *Repository) ListTransactions(userID int64, limit, offset int) ([]models
 		var tx models.Transaction
 		err := rows.Scan(
 			&tx.ID, &tx.UserID, &tx.TxnDate, &tx.Amount, &tx.Currency, &tx.Direction,
-			&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description,
+			&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description, &tx.ChatMessage,
 			&tx.SlipImagePath, &tx.RawOCRText, &tx.LLMConfidence,
 			&tx.Status, &tx.CreatedAt, &tx.UpdatedAt,
 		)
@@ -240,6 +269,91 @@ func (r *Repository) ListTransactions(userID int64, limit, offset int) ([]models
 		transactions = append(transactions, tx)
 	}
 	return transactions, rows.Err()
+}
+
+// ListTransactionsByRange returns transactions within a date range (txn_date or created_at).
+func (r *Repository) ListTransactionsByRange(userID int64, from, to string, limit int) ([]models.Transaction, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	rows, err := r.db.Query(`
+		SELECT id, user_id, txn_date, amount, currency, direction, channel, account_label,
+		       category, description, chat_message, slip_image_path, raw_ocr_text, llm_confidence,
+		       status, created_at, updated_at
+		FROM transactions
+		WHERE user_id = ?
+		  AND date(COALESCE(txn_date, created_at)) BETWEEN date(?) AND date(?)
+		ORDER BY COALESCE(txn_date, created_at) DESC, created_at DESC
+		LIMIT ?
+	`, userID, from, to, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transactions []models.Transaction
+	for rows.Next() {
+		var tx models.Transaction
+		err := rows.Scan(
+			&tx.ID, &tx.UserID, &tx.TxnDate, &tx.Amount, &tx.Currency, &tx.Direction,
+			&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description, &tx.ChatMessage,
+			&tx.SlipImagePath, &tx.RawOCRText, &tx.LLMConfidence,
+			&tx.Status, &tx.CreatedAt, &tx.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, tx)
+	}
+	return transactions, nil
+}
+
+// ListTransactionsByRangeFiltered returns transactions within a date range filtered by category/channel.
+func (r *Repository) ListTransactionsByRangeFiltered(userID int64, from, to, category, channel string, limit int) ([]models.Transaction, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	query := `
+		SELECT id, user_id, txn_date, amount, currency, direction, channel, account_label,
+		       category, description, chat_message, slip_image_path, raw_ocr_text, llm_confidence,
+		       status, created_at, updated_at
+		FROM transactions
+		WHERE user_id = ?
+		  AND date(COALESCE(txn_date, created_at)) BETWEEN date(?) AND date(?)
+	`
+	args := []interface{}{userID, from, to}
+	if category != "" {
+		query += " AND category = ?"
+		args = append(args, category)
+	}
+	if channel != "" {
+		query += " AND channel = ?"
+		args = append(args, channel)
+	}
+	query += " ORDER BY COALESCE(txn_date, created_at) DESC, created_at DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transactions []models.Transaction
+	for rows.Next() {
+		var tx models.Transaction
+		err := rows.Scan(
+			&tx.ID, &tx.UserID, &tx.TxnDate, &tx.Amount, &tx.Currency, &tx.Direction,
+			&tx.Channel, &tx.AccountLabel, &tx.Category, &tx.Description, &tx.ChatMessage,
+			&tx.SlipImagePath, &tx.RawOCRText, &tx.LLMConfidence,
+			&tx.Status, &tx.CreatedAt, &tx.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, tx)
+	}
+	return transactions, nil
 }
 
 // GetDashboardSummary returns aggregated data for the dashboard

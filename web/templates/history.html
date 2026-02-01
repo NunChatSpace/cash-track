@@ -21,6 +21,12 @@
                     <span class="channel-badge" data-channel="{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}">{{if .Channel}}{{.Channel}}{{else}}unknown{{end}}</span>
                     <span class="category-badge" data-category="{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}">{{if .Category}}{{.Category}}{{else}}uncategorized{{end}}</span>
                     <span class="status-badge status-{{.Status}}" data-status="{{.Status}}">{{.Status}}</span>
+                    {{if eq .Status "pending"}}
+                    <span class="processing-indicator">
+                        <span class="typing-indicator"><span></span><span></span><span></span></span>
+                        <span data-i18n="history.processing">Processing...</span>
+                    </span>
+                    {{end}}
                     {{if .TxnDate}}<span class="date">{{.TxnDate}}</span>{{else}}<span class="date">{{.CreatedAt}}</span>{{end}}
                 </div>
             </div>

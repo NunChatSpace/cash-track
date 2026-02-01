@@ -22,6 +22,7 @@ func migrate(db *sql.DB) error {
 		account_label TEXT,
 		category TEXT,
 		description TEXT,
+		chat_message TEXT,
 		slip_image_path TEXT,
 		raw_ocr_text TEXT,
 		llm_confidence REAL,
@@ -52,6 +53,7 @@ func migrate(db *sql.DB) error {
 		`ALTER TABLE transactions ADD COLUMN account_label TEXT`,
 		`ALTER TABLE transactions ADD COLUMN category TEXT`,
 		`ALTER TABLE transactions ADD COLUMN description TEXT`,
+		`ALTER TABLE transactions ADD COLUMN chat_message TEXT`,
 		`ALTER TABLE transactions ADD COLUMN slip_image_path TEXT`,
 		`ALTER TABLE transactions ADD COLUMN llm_confidence REAL`,
 	}

@@ -354,7 +354,7 @@ body {
     flex-direction: column;
     gap: 0.5rem;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow: visible;
 }
 
 .form-group label {
@@ -618,6 +618,14 @@ body {
     flex-wrap: wrap;
 }
 
+.processing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
 .channel-badge {
     background: #e0e7ff;
     color: #3730a3;
@@ -766,6 +774,32 @@ body {
     border-bottom-left-radius: 4px;
 }
 
+.message-image-content {
+    padding: 0.5rem;
+}
+
+.message-image {
+    width: 220px;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.message-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.message-caption {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: #ffffff;
+    opacity: 0.85;
+}
+
 .message-loading .message-content {
     opacity: 0.7;
     font-style: italic;
@@ -816,6 +850,22 @@ body {
     padding: 1rem;
     border-top: 1px solid #eee;
     background: #fafafa;
+}
+
+.pending-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #1e3a8a;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.pending-banner.hidden {
+    display: none;
 }
 
 .image-preview {
@@ -991,6 +1041,151 @@ body {
     gap: 2rem;
 }
 
+.grouped-transactions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+    margin-top: 2.5rem;
+}
+
+.grouped-block {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.grouped-block h3 {
+    margin-bottom: 1rem;
+}
+
+.group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.group-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+}
+
+.group-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    text-align: left;
+}
+
+.group-title {
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.group-header-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.group-toggle-icon {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #64748b;
+    border-bottom: 2px solid #64748b;
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+}
+
+.group-card.open .group-toggle-icon {
+    transform: rotate(-135deg);
+}
+
+.group-total {
+    font-weight: 700;
+}
+
+.group-total.negative {
+    color: #dc2626;
+}
+
+.group-total.positive {
+    color: #16a34a;
+}
+
+.group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    display: none;
+}
+
+.group-card.open .group-items {
+    display: flex;
+}
+.group-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.group-item:first-child {
+    border-top: none;
+}
+
+.group-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.group-item-title {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.group-item-meta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.group-item-amount {
+    font-weight: 700;
+}
+
+.group-item-amount.expense {
+    color: #dc2626;
+}
+
+.group-item-amount.income {
+    color: #16a34a;
+}
+
+.group-empty {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
 .chart-container {
     background: white;
     padding: 1.5rem;
@@ -1134,7 +1329,7 @@ body {
     .confirm-container {
         grid-template-columns: 1fr;
         padding: 1.25rem;
-        overflow-x: hidden;
+        overflow: visible;
     }
 
     .confirm-form {

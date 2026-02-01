@@ -17,6 +17,7 @@ type ChatRequest struct {
 	Message   string  `json:"message"`
 	ImagePath *string `json:"image_path"`
 	Lang      string  `json:"lang"`
+	TxID      *int64  `json:"transaction_id"`
 }
 
 // ChatResponse represents the chat response
@@ -66,7 +67,7 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 	// Handle based on intent
 	switch llmResp.Intent {
 	case "add_transaction", "bill_payment":
-		h.handleAddTransaction(w, r, req.Message, llmResp, req.ImagePath, ocrText, lang)
+		h.handleAddTransaction(w, r, req.Message, llmResp, req.ImagePath, ocrText, lang, req.TxID)
 	case "query_summary":
 		h.handleQuerySummary(w, r, llmResp, lang)
 	default:
@@ -74,7 +75,7 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, message string, resp *llm.ChatResponse, imagePath *string, ocrText *string, lang string) {
+func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, message string, resp *llm.ChatResponse, imagePath *string, ocrText *string, lang string, txID *int64) {
 	if resp.Transaction == nil {
 		respondChat(w, chatText(lang, "missing_amount"), nil, resp)
 		return
@@ -115,6 +116,33 @@ func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, m
 
 	// Create transaction
 	userID, _ := h.currentUserID(w, r)
+	if txID != nil && *txID > 0 {
+		if err := h.repo.UpdateTransactionFromChat(
+			userID,
+			*txID,
+			tx.TxnDate,
+			tx.Amount,
+			tx.Currency,
+			tx.Direction,
+			tx.Channel,
+			tx.AccountLabel,
+			tx.Category,
+			tx.Description,
+			message,
+			rawOCR,
+			resp.Confidence,
+			status,
+		); err != nil {
+			log.Printf("Failed to update transaction %d: %v", *txID, err)
+			respondChat(w, chatText(lang, "save_failed"), nil, resp)
+			return
+		}
+
+		reply := buildTransactionReply(tx, status, lang)
+		respondChat(w, reply, txID, resp)
+		return
+	}
+
 	created, err := h.repo.CreateTransactionFromChat(
 		userID,
 		tx.TxnDate,
@@ -125,6 +153,7 @@ func (h *Handler) handleAddTransaction(w http.ResponseWriter, r *http.Request, m
 		tx.AccountLabel,
 		tx.Category,
 		tx.Description,
+		message,
 		slipPath,
 		rawOCR,
 		resp.Confidence,

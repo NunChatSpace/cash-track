@@ -15,6 +15,7 @@ type Transaction struct {
 	AccountLabel  sql.NullString  `json:"account_label"`
 	Category      sql.NullString  `json:"category"`
 	Description   sql.NullString  `json:"description"`
+	ChatMessage   sql.NullString  `json:"chat_message"`
 	SlipImagePath sql.NullString  `json:"slip_image_path"`
 	RawOCRText    sql.NullString  `json:"raw_ocr_text"`
 	LLMConfidence sql.NullFloat64 `json:"llm_confidence"`
@@ -34,6 +35,7 @@ type TransactionView struct {
 	AccountLabel  string  `json:"account_label"`
 	Category      string  `json:"category"`
 	Description   string  `json:"description"`
+	ChatMessage   string  `json:"chat_message"`
 	SlipImagePath string  `json:"slip_image_path"`
 	RawOCRText    string  `json:"raw_ocr_text"`
 	LLMConfidence float64 `json:"llm_confidence"`
@@ -74,6 +76,9 @@ func (t *Transaction) ToView() TransactionView {
 	}
 	if t.Description.Valid {
 		view.Description = t.Description.String
+	}
+	if t.ChatMessage.Valid {
+		view.ChatMessage = t.ChatMessage.String
 	}
 	if t.SlipImagePath.Valid {
 		view.SlipImagePath = t.SlipImagePath.String

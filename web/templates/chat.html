@@ -37,12 +37,18 @@ const removeImage = document.getElementById('removeImage');
 
 let selectedFile = null;
 let isSending = false;
+let isLoadingHistory = false;
+let historyOffset = 0;
+const historyLimit = 20;
 
-function addMessage(text, isUser = false, txId = null, isLoading = false) {
+function createMessageElement(text, isUser = false, txId = null, isLoading = false) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'message-user' : 'message-bot'}`;
     if (isLoading) {
         div.classList.add('message-loading');
+    }
+    if (txId) {
+        div.dataset.txId = txId;
     }
 
     let content = `<div class="message-content">${escapeHtml(text)}</div>`;
@@ -56,15 +62,87 @@ function addMessage(text, isUser = false, txId = null, isLoading = false) {
     }
 
     div.innerHTML = content;
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
+}
+
+function addMessage(text, isUser = false, txId = null, isLoading = false) {
+    const el = createMessageElement(text, isUser, txId, isLoading);
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return el;
 }
 
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function createImageMessageElement(src, filename) {
+    const div = document.createElement('div');
+    div.className = 'message message-user';
+    const safeName = escapeHtml(filename || '');
+    div.innerHTML = `
+        <div class="message-content message-image-content">
+            <div class="message-image">
+                <img src="${src}" alt="${safeName}">
+            </div>
+            ${safeName ? `<div class="message-caption">${safeName}</div>` : ''}
+        </div>
+    `;
+    return div;
+}
+
+function addImageMessage(src, filename) {
+    const el = createImageMessageElement(src, filename);
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return el;
+}
+
+function formatTxMessage(tx) {
+    const direction = tx.direction === 'income' ? '+' : '-';
+    const category = tx.category ? ` [${tx.category}]` : '';
+    const desc = tx.description || '';
+    const date = tx.txn_date || (tx.created_at ? tx.created_at.split(' ')[0] : '');
+    if (tx.amount && tx.amount > 0) {
+        return `${date}: ${direction}${tx.amount.toFixed(2)} ${tx.currency}${category} ${desc}`.trim();
+    }
+    return CashTrackI18n.t('history.processing');
+}
+
+const pendingPollers = new Map();
+
+function startPendingPoll(txId) {
+    if (pendingPollers.has(txId)) return;
+    const interval = setInterval(async () => {
+        try {
+            const resp = await fetch(`/api/transactions/${txId}`);
+            if (!resp.ok) return;
+            const tx = await resp.json();
+            const messageEl = document.querySelector(`.message[data-tx-id="${txId}"]`);
+            if (!messageEl) {
+                clearInterval(interval);
+                pendingPollers.delete(txId);
+                return;
+            }
+            if (tx.amount && tx.amount > 0) {
+                const content = messageEl.querySelector('.message-content');
+                if (content) content.textContent = formatTxMessage(tx);
+                messageEl.classList.remove('message-loading');
+                const meta = messageEl.querySelector('.message-meta');
+                if (meta) {
+                    const locale = CashTrackI18n.getLocale();
+                    meta.innerHTML = `${CashTrackI18n.t('chat.assistant')} • ${new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+                }
+                clearInterval(interval);
+                pendingPollers.delete(txId);
+            }
+        } catch (e) {
+            console.error('Pending poll failed:', e);
+        }
+    }, 3000);
+    pendingPollers.set(txId, interval);
 }
 
 async function sendMessage() {
@@ -78,8 +156,11 @@ async function sendMessage() {
     if (message) {
         addMessage(message, true);
     }
+    let pendingImage = null;
+    let objectUrl = null;
     if (selectedFile) {
-        addMessage(`[${CashTrackI18n.t('chat.image_prefix')}: ${selectedFile.name}]`, true);
+        objectUrl = URL.createObjectURL(selectedFile);
+        pendingImage = addImageMessage(objectUrl, selectedFile.name);
     }
 
     messageInput.value = '';
@@ -105,6 +186,12 @@ async function sendMessage() {
             if (uploadResp.ok) {
                 const data = await uploadResp.json();
                 body.image_path = data.image_path;
+                body.transaction_id = data.id;
+                if (pendingImage) {
+                    const img = pendingImage.querySelector('img');
+                    if (img) img.src = `/uploads/${data.image_path}`;
+                    if (objectUrl) URL.revokeObjectURL(objectUrl);
+                }
             }
         } catch (e) {
             console.error('Upload failed:', e);
@@ -182,27 +269,56 @@ removeImage.addEventListener('click', clearImage);
 
 // Load recent transactions on page load
 async function loadHistory() {
+    if (isLoadingHistory) return;
+    isLoadingHistory = true;
     try {
-        const response = await fetch('/api/transactions/recent');
+        const response = await fetch(`/api/transactions/recent?limit=${historyLimit}&offset=${historyOffset}`);
         if (response.ok) {
             const transactions = await response.json();
             if (transactions && transactions.length > 0) {
+                const isInitial = historyOffset === 0;
                 // Show in chronological order (oldest first)
+                const pendingIds = [];
+                const nodes = [];
                 transactions.reverse().forEach(tx => {
-                    const direction = tx.direction === 'income' ? '+' : '-';
-                    const category = tx.category ? ` [${tx.category}]` : '';
-                    const desc = tx.description || '';
-                    const date = tx.txn_date || tx.created_at.split(' ')[0];
-                    const msg = `${date}: ${direction}${tx.amount.toFixed(2)} ${tx.currency}${category} ${desc}`.trim();
-                    addMessage(msg, false, tx.status === 'pending' ? tx.id : null);
+                    if (tx.chat_message) {
+                        nodes.push(createMessageElement(tx.chat_message, true));
+                    }
+                    if (tx.slip_image_path) {
+                        nodes.push(createImageMessageElement(`/uploads/${tx.slip_image_path}`, tx.slip_image_path));
+                    }
+                    const msg = formatTxMessage(tx);
+                    const isPending = tx.status === 'pending' && (!tx.amount || tx.amount === 0);
+                    nodes.push(createMessageElement(msg, false, tx.status === 'pending' ? tx.id : null, isPending));
+                    if (isPending) pendingIds.push(tx.id);
                 });
+                if (isInitial) {
+                    nodes.forEach((node) => chatMessages.appendChild(node));
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } else {
+                    const previousScrollHeight = chatMessages.scrollHeight;
+                    const firstChild = chatMessages.firstChild;
+                    nodes.forEach((node) => chatMessages.insertBefore(node, firstChild));
+                    const newScrollHeight = chatMessages.scrollHeight;
+                    chatMessages.scrollTop = newScrollHeight - previousScrollHeight;
+                }
+                historyOffset += transactions.length;
+                pendingIds.forEach(startPendingPoll);
             }
         }
     } catch (e) {
         console.error('Failed to load history:', e);
+    } finally {
+        isLoadingHistory = false;
     }
 }
 
 loadHistory();
+
+chatMessages.addEventListener('scroll', () => {
+    if (chatMessages.scrollTop <= 10) {
+        loadHistory();
+    }
+});
 </script>
 {{end}}

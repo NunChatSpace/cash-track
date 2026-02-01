@@ -3,7 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
+
+	"cash-track/internal/models"
 )
 
 // DashboardSummary handles GET /api/dashboard/summary
@@ -49,6 +52,46 @@ func (h *Handler) DashboardByChannel(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(channels)
+}
+
+// DashboardTransactions handles GET /api/dashboard/transactions
+func (h *Handler) DashboardTransactions(w http.ResponseWriter, r *http.Request) {
+	from, to := getDateRange(r)
+	userID, _ := h.currentUserID(w, r)
+
+	limit := 200
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			if parsed > 500 {
+				parsed = 500
+			}
+			limit = parsed
+		}
+	}
+	category := r.URL.Query().Get("category")
+	channel := r.URL.Query().Get("channel")
+
+	var (
+		transactions []models.Transaction
+		err          error
+	)
+	if category != "" || channel != "" {
+		transactions, err = h.repo.ListTransactionsByRangeFiltered(userID, from, to, category, channel, limit)
+	} else {
+		transactions, err = h.repo.ListTransactionsByRange(userID, from, to, limit)
+	}
+	if err != nil {
+		http.Error(w, "Failed to get transactions", http.StatusInternalServerError)
+		return
+	}
+
+	var views []interface{}
+	for _, tx := range transactions {
+		views = append(views, tx.ToView())
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(views)
 }
 
 // DashboardPage renders the dashboard UI

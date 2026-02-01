@@ -15,6 +15,11 @@
         </div>
     </div>
 
+    <div class="pending-banner hidden" id="pendingBanner">
+        <span class="typing-indicator"><span></span><span></span><span></span></span>
+        <span data-i18n="dashboard.processing">Processing slip...</span>
+    </div>
+
     <div class="summary-cards">
         <div class="summary-card expense">
             <div class="card-label" data-i18n="dashboard.summary.expense">รายจ่าย</div>
@@ -42,6 +47,17 @@
         <div class="chart-container">
             <h3 data-i18n="dashboard.charts.by_channel">รายจ่ายตามช่องทาง</h3>
             <canvas id="channelChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grouped-transactions">
+        <div class="grouped-block">
+            <h3 data-i18n="dashboard.groups.by_category">รายการตามหมวด</h3>
+            <div id="categoryGroups" class="group-list"></div>
+        </div>
+        <div class="grouped-block">
+            <h3 data-i18n="dashboard.groups.by_channel">รายการตามช่องทาง</h3>
+            <div id="channelGroups" class="group-list"></div>
         </div>
     </div>
 </div>
@@ -143,6 +159,23 @@ async function fetchDashboard(from, to) {
     } catch (e) {
         console.error('Fetch error:', e);
         return null;
+    }
+}
+
+async function fetchTransactions(from, to, params) {
+    const search = new URLSearchParams({
+        from,
+        to,
+        limit: '6',
+        ...params
+    });
+    try {
+        const response = await fetch(`/api/dashboard/transactions?${search.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch');
+        return await response.json();
+    } catch (e) {
+        console.error('Fetch transactions error:', e);
+        return [];
     }
 }
 
@@ -258,6 +291,135 @@ async function loadDashboard(from, to) {
     updateSummaryCards(data);
     renderCategoryChart(data);
     renderChannelChart(data);
+    renderGroupedTransactionsAsync(data.by_category || [], data.by_channel || [], from, to);
+}
+
+function getChannelLabel(key) {
+    if (!window.CashTrackI18n) return key;
+    if (key === 'cash') return CashTrackI18n.t('labels.channel_cash');
+    if (key === 'scb') return CashTrackI18n.t('labels.channel_scb');
+    if (key === 'kbank') return CashTrackI18n.t('labels.channel_kbank');
+    if (key === 'tmw') return CashTrackI18n.t('labels.channel_tmw');
+    if (key === 'bbl') return CashTrackI18n.t('labels.channel_bbl');
+    if (key === 'ktb') return CashTrackI18n.t('labels.channel_ktb');
+    if (key === 'other') return CashTrackI18n.t('labels.channel_other');
+    if (key === 'unknown') return CashTrackI18n.t('labels.channel_unknown');
+    return key;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function renderGroupedTransactionsAsync(categories, channels, from, to) {
+    const categoryEl = document.getElementById('categoryGroups');
+    const channelEl = document.getElementById('channelGroups');
+    if (!categoryEl || !channelEl) return;
+
+    const locale = getLocale();
+
+    function renderGroupShell(container, list, type) {
+        if (!list || list.length === 0) {
+            container.innerHTML = `<div class="group-empty" data-i18n="dashboard.groups.empty">No transactions</div>`;
+            return;
+        }
+        container.innerHTML = list.map(group => {
+            const key = type === 'category' ? group.category : group.channel;
+            const title = type === 'category' ? getCategoryLabel(key) : getChannelLabel(key);
+            const totalText = (group.amount || 0).toLocaleString(locale, { minimumFractionDigits: 2 });
+            return `
+                <div class="group-card" data-group-key="${key}" data-group-type="${type}">
+                    <button class="group-header" type="button" aria-expanded="false">
+                        <div class="group-title">${title}</div>
+                        <div class="group-header-meta">
+                            <div class="group-total negative">${totalText}</div>
+                            <span class="group-toggle-icon"></span>
+                        </div>
+                    </button>
+                    <div class="group-items">
+                        <div class="group-loading">
+                            <span class="typing-indicator"><span></span><span></span><span></span></span>
+                            <span data-i18n="dashboard.groups.loading">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderGroupShell(categoryEl, categories, 'category');
+    renderGroupShell(channelEl, channels, 'channel');
+
+    categories.forEach((group) => {
+        const key = group.category;
+        fetchTransactions(from, to, { category: key }).then((items) => {
+            fillGroupItems(key, 'category', items);
+        });
+    });
+
+    channels.forEach((group) => {
+        const key = group.channel;
+        fetchTransactions(from, to, { channel: key }).then((items) => {
+            fillGroupItems(key, 'channel', items);
+        });
+    });
+
+    document.querySelectorAll('.group-card').forEach((card) => {
+        card.addEventListener('click', () => {
+            const header = card.querySelector('.group-header');
+            const isOpen = card.classList.toggle('open');
+            if (header) {
+                header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        });
+    });
+
+    function fillGroupItems(key, type, items) {
+        const card = document.querySelector(`.group-card[data-group-key="${key}"][data-group-type="${type}"]`);
+        if (!card) return;
+        const list = card.querySelector('.group-items');
+        if (!list) return;
+        if (!items || items.length === 0) {
+            list.innerHTML = `<div class="group-empty" data-i18n="dashboard.groups.empty">No transactions</div>`;
+            return;
+        }
+        list.innerHTML = items.slice(0, 6).map(tx => {
+            const amount = tx.amount || 0;
+            const sign = tx.direction === 'income' ? '+' : '-';
+            const amountText = `${sign}${amount.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
+            const date = tx.txn_date || (tx.created_at ? tx.created_at.split(' ')[0] : '');
+            const desc = escapeHtml(tx.description || tx.chat_message || '');
+            return `
+                <div class="group-item">
+                    <div class="group-item-main">
+                        <div class="group-item-title">${desc || '-'}</div>
+                        <div class="group-item-meta">${date}</div>
+                    </div>
+                    <div class="group-item-amount ${tx.direction}">${amountText}</div>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+async function loadPendingStatus() {
+    try {
+        const resp = await fetch('/api/transactions/recent');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const pendingCount = Array.isArray(data) ? data.filter(tx => tx.status === 'pending').length : 0;
+        const banner = document.getElementById('pendingBanner');
+        if (!banner) return;
+        if (pendingCount > 0) {
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error('Failed to load pending status:', e);
+    }
 }
 
 // Event listeners
@@ -287,6 +449,8 @@ const initialRange = getDateRange('month');
 document.getElementById('fromDate').value = initialRange.from;
 document.getElementById('toDate').value = initialRange.to;
 loadDashboard(initialRange.from, initialRange.to);
+loadPendingStatus();
+setInterval(loadPendingStatus, 10000);
 
 document.addEventListener('cash-track:lang', () => {
     const from = document.getElementById('fromDate').value;
@@ -294,6 +458,7 @@ document.addEventListener('cash-track:lang', () => {
     if (from && to) {
         loadDashboard(from, to);
     }
+    loadPendingStatus();
 });
 </script>
 {{end}}

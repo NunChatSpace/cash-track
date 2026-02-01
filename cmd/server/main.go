@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"net"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -79,6 +79,7 @@ func main() {
 	r.Get("/api/dashboard/summary", h.DashboardSummary)
 	r.Get("/api/dashboard/by-category", h.DashboardByCategory)
 	r.Get("/api/dashboard/by-channel", h.DashboardByChannel)
+	r.Get("/api/dashboard/transactions", h.DashboardTransactions)
 
 	log.Printf("Server starting on http://localhost:%s", cfg.ServerPort)
 	for _, ip := range lanIPs() {
