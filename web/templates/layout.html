@@ -13,9 +13,8 @@
         <div class="nav-actions">
             <div class="user-badge nav-user-badge" id="userBadge">U</div>
             <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle menu" aria-expanded="false">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span class="nav-toggle-icon nav-toggle-open" style="--icon-url: url('/static/icons/hamburger.svg')"></span>
+                <span class="nav-toggle-icon nav-toggle-close" style="--icon-url: url('/static/icons/close.svg')"></span>
             </button>
         </div>
         <div class="nav-links" id="navLinks">
@@ -403,6 +402,9 @@
             wrapper.appendChild(list);
             select.dataset.enhanced = 'true';
             select.classList.add('select-native');
+            if (select.id === 'userSelect') {
+                wrapper.dataset.fullWidth = 'true';
+            }
 
             function buildOptions() {
                 list.innerHTML = '';
@@ -534,8 +536,25 @@
             document.querySelectorAll('select').forEach((select) => refresh(select));
         }
 
+        function applyMobileSelectSizing() {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            document.querySelectorAll('.custom-select[data-full-width="true"]').forEach((wrapper) => {
+                const trigger = wrapper.querySelector('.custom-select-trigger');
+                if (!trigger) return;
+                if (isMobile) {
+                    wrapper.style.width = '100%';
+                    trigger.style.width = '100%';
+                } else {
+                    wrapper.style.width = '';
+                    trigger.style.width = '';
+                }
+            });
+        }
+
+        window.addEventListener('resize', applyMobileSelectSizing);
         window.CashTrackSelect = { enhance: enhanceSelect, refresh, refreshAll };
         refreshAll();
+        applyMobileSelectSizing();
     })();
 
     (async function initUserSwitch() {
@@ -657,6 +676,7 @@
         toggle.addEventListener('click', () => {
             const isOpen = links.classList.toggle('open');
             toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            toggle.classList.toggle('open', isOpen);
         });
     })();
     </script>

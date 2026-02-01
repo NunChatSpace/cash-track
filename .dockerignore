@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+bin
+cash-track.db
+uploads
+ocr-service/__pycache__
+ocr-service/.venv
+ocr-service/venv
+**/__pycache__
+**/*.log
